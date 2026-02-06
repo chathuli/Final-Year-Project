@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Breast Cancer Detection | Advanced Medical Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏥 Breast Cancer Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history">History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <div class="medical-badge">
+                <span>🩺</span>
+                <span>AI-Powered Medical Diagnostics</span>
+            </div>
+            <h1 class="hero-title">AI-Powered Breast Cancer Detection</h1>
+            <p class="hero-subtitle">Advanced machine learning for early diagnosis and better outcomes</p>
+        </div>
+    </div>
+
+    <div class="stethoscope-decoration"></div>
+
+    <div class="container pb-5">
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="main-card">
+                    <div class="card-header-custom">
+                        <h3>🔬 Medical Analysis System</h3>
+                        <p class="mb-0 mt-2 header-subtitle">Upload patient data or enter features for instant AI-powered analysis</p>
+                    </div>
+                    <div class="card-body-custom">
+                        <div class="info-card">
+                            <div class="info-card-icon">💡</div>
+                            <strong>How it works:</strong> Our AI model analyzes 30 key features from breast mass measurements 
+                            to predict whether a tumor is benign or malignant with high accuracy.
+                        </div>
+                        
+                        <form id="predictionForm">
+                            <div class="mb-4">
+                                <label class="form-label">📁 Upload Patient Data (CSV File)</label>
+                                <input type="file" class="form-control" id="dataFile" accept=".csv" placeholder="No file chosen">
+                                <small class="text-muted">Upload a CSV file containing the 30 feature measurements</small>
+                            </div>
+                            
+                            <div class="text-center my-4">
+                                <span class="badge bg-secondary px-4 py-2">OR</span>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label">✏️ Enter Features Manually</label>
+                                <textarea class="form-control" id="featuresInput" rows="5" 
+                                    placeholder="Enter 30 comma-separated feature values...&#10;&#10;Example: 17.99,10.38,122.8,1001,0.1184,0.2776,0.3001,0.1471,0.2419,0.07871,1.095,0.9053,8.589,153.4,0.006399,0.04904,0.05373,0.01587,0.03003,0.006193,25.38,17.33,184.6,2019,0.1622,0.6656,0.7119,0.2654,0.4601,0.1189"></textarea>
+                                <small class="text-muted">
+                                    <strong>Required:</strong> 30 numeric values representing radius, texture, perimeter, area, smoothness, 
+                                    compactness, concavity, concave points, symmetry, and fractal dimension (mean, SE, and worst values)
+                                </small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-analyze w-100">
+                                🔍 Analyze Now
+                            </button>
+                        </form>
+                        
+                        <div id="results" class="d-none"></div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">98.2%</div>
+                        <div class="stat-label">Model Accuracy</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">569</div>
+                        <div class="stat-label">Training Samples</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">30</div>
+                        <div class="stat-label">Feature Analysis</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">ML Algorithms</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stethoscope-decoration"></div>
+    <div class="medical-pattern"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

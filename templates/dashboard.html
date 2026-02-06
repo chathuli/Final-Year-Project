@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - AI Breast Cancer Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏥 AI Cancer Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history">History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <div class="medical-badge">
+                <span>📈</span>
+                <span>Analytics & Insights</span>
+            </div>
+            <h1 class="hero-title">Analytics Dashboard</h1>
+            <p class="hero-subtitle">Comprehensive statistics and visualizations</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        <div class="row">
+            <div class="col-lg-11 mx-auto">
+                <!-- Statistics Cards -->
+                <div class="stats-grid mb-4">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPredictions">0</div>
+                        <div class="stat-label">Total Predictions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value stat-value-benign" id="benignCount">0</div>
+                        <div class="stat-label">Benign Cases</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value stat-value-malignant" id="malignantCount">0</div>
+                        <div class="stat-label">Malignant Cases</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avgConfidence">0%</div>
+                        <div class="stat-label">Avg Confidence</div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="main-card">
+                            <div class="card-body-custom">
+                                <h4 class="mb-3">Prediction Distribution</h4>
+                                <div id="pieChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="main-card">
+                            <div class="card-body-custom">
+                                <h4 class="mb-3">Predictions Over Time</h4>
+                                <div id="lineChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stethoscope-decoration"></div>
+    <div class="medical-pattern"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/statistics');
+                const stats = await response.json();
+                
+                // Update stat cards
+                document.getElementById('totalPredictions').textContent = stats.total;
+                document.getElementById('benignCount').textContent = stats.benign;
+                document.getElementById('malignantCount').textContent = stats.malignant;
+                document.getElementById('avgConfidence').textContent = stats.avg_confidence + '%';
+                
+                // Create pie chart
+                createPieChart(stats.benign, stats.malignant);
+                
+                // Create line chart
+                createLineChart(stats.daily_predictions);
+                
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        function createPieChart(benign, malignant) {
+            const data = [{
+                values: [benign, malignant],
+                labels: ['Benign', 'Malignant'],
+                type: 'pie',
+                marker: {
+                    colors: ['#10b981', '#ef4444']
+                },
+                textinfo: 'label+percent',
+                textposition: 'inside',
+                hoverinfo: 'label+value+percent'
+            }];
+
+            const layout = {
+                height: 300,
+                margin: { t: 0, b: 0, l: 0, r: 0 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    y: -0.1
+                }
+            };
+
+            Plotly.newPlot('pieChart', data, layout, {responsive: true});
+        }
+
+        function createLineChart(dailyData) {
+            if (!dailyData || dailyData.length === 0) {
+                document.getElementById('lineChart').innerHTML = '<p class="text-center text-muted">No data available</p>';
+                return;
+            }
+
+            const dates = dailyData.map(d => d.date);
+            const counts = dailyData.map(d => d.count);
+
+            const data = [{
+                x: dates,
+                y: counts,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {
+                    color: '#0891b2',
+                    width: 3
+                },
+                marker: {
+                    size: 8,
+                    color: '#0369a1'
+                }
+            }];
+
+            const layout = {
+                height: 300,
+                margin: { t: 20, b: 40, l: 40, r: 20 },
+                xaxis: {
+                    title: 'Date'
+                },
+                yaxis: {
+                    title: 'Number of Predictions'
+                }
+            };
+
+            Plotly.newPlot('lineChart', data, layout, {responsive: true});
+        }
+
+        // Load statistics on page load
+        document.addEventListener('DOMContentLoaded', loadStatistics);
+    </script>
+</body>
+</html>
