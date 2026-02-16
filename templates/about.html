@@ -29,7 +29,13 @@
                         <a class="nav-link" href="/history">History</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/profile">Profile</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link active" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -50,8 +56,73 @@
     <div class="stethoscope-decoration"></div>
 
     <div class="container pb-5">
-        <div class="row">
-            <div class="col-lg-10 mx-auto">
+        <div class="page-wrapper">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <h3 class="sidebar-title">
+                    <span class="sidebar-icon">ℹ️</span>
+                    Quick Navigation
+                </h3>
+                <ul class="sidebar-menu">
+                    <li>
+                        <a href="/" class="sidebar-link">
+                            <span class="sidebar-icon">🏠</span>
+                            Home
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/dashboard" class="sidebar-link">
+                            <span class="sidebar-icon">📈</span>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/history" class="sidebar-link">
+                            <span class="sidebar-icon">📋</span>
+                            History
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/profile" class="sidebar-link">
+                            <span class="sidebar-icon">👤</span>
+                            Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/about" class="sidebar-link active">
+                            <span class="sidebar-icon">ℹ️</span>
+                            About
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-info-card">
+                        <div class="sidebar-info-title">🎓 Project Info</div>
+                        <div class="sidebar-info-text">
+                            Final Year Computing Project using AI for breast cancer detection.
+                        </div>
+                    </div>
+
+                    <div class="sidebar-stats">
+                        <div class="sidebar-stat-item">
+                            <span class="sidebar-stat-label">Accuracy</span>
+                            <span class="sidebar-stat-value">98.25%</span>
+                        </div>
+                        <div class="sidebar-stat-item">
+                            <span class="sidebar-stat-label">Models</span>
+                            <span class="sidebar-stat-value">3</span>
+                        </div>
+                        <div class="sidebar-stat-item">
+                            <span class="sidebar-stat-label">Features</span>
+                            <span class="sidebar-stat-value">30</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <div class="main-content">
                 <div class="main-card mb-4">
                     <div class="card-body-custom">
                         <h2 class="mb-4">🎯 Project Overview</h2>

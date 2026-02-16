@@ -1,5 +1,5 @@
 """
-Enhanced Prediction Module with Multi-Model Support and Feature Importance
+Enhanced Prediction Module with Multi-Model Support, Feature Importance, and SHAP
 """
 
 import numpy as np
@@ -13,9 +13,10 @@ class EnhancedPredictor:
         self.scaler = None
         self.feature_names = load_breast_cancer().feature_names
         self.best_model_name = None
+        self.shap_explainer = None
         
     def load_models(self):
-        """Load all trained models"""
+        """Load all trained models and SHAP explainer"""
         try:
             # Load all three models
             model_files = {
@@ -38,7 +39,15 @@ class EnhancedPredictor:
             # Load scaler
             self.scaler = joblib.load('models/scaler.pkl')
             
-            print(f"Loaded {len(self.models)} model(s)")
+            # Load SHAP explainer
+            try:
+                from shap_explainer import get_shap_explainer
+                self.shap_explainer = get_shap_explainer()
+                print(f"✓ Loaded {len(self.models)} model(s) with SHAP explainer")
+            except Exception as e:
+                print(f"⚠ SHAP explainer not available: {e}")
+                print(f"✓ Loaded {len(self.models)} model(s)")
+            
             return True
         except Exception as e:
             print(f"Error loading models: {e}")
@@ -96,7 +105,30 @@ class EnhancedPredictor:
         }
     
     def get_feature_importance(self, features):
-        """Get feature importance for the prediction"""
+        """Get feature importance for the prediction using SHAP if available"""
+        # Try SHAP first (more accurate)
+        if self.shap_explainer is not None:
+            try:
+                # Use Logistic Regression for SHAP (fastest)
+                model_name = 'logistic_regression'
+                shap_result = self.shap_explainer.explain_prediction(features, model_name)
+                
+                if shap_result.get('success'):
+                    # Convert SHAP top features to our format
+                    top_features = []
+                    for feat in shap_result['top_features'][:10]:
+                        top_features.append({
+                            'name': feat['feature'],
+                            'importance': feat['abs_shap_value'],
+                            'value': feat['value'],
+                            'shap_value': feat['shap_value'],
+                            'impact': feat['impact']
+                        })
+                    return top_features
+            except Exception as e:
+                print(f"SHAP explanation failed, using fallback: {e}")
+        
+        # Fallback to original method
         features_scaled = self.preprocess_input(features)
         
         # Get feature importance from Random Forest if available
@@ -131,6 +163,16 @@ class EnhancedPredictor:
             })
         
         return top_features
+    
+    def get_shap_explanation(self, features, model_name='logistic_regression'):
+        """Get detailed SHAP explanation with visualizations"""
+        if self.shap_explainer is None:
+            return {'error': 'SHAP explainer not available'}
+        
+        try:
+            return self.shap_explainer.explain_prediction(features, model_name)
+        except Exception as e:
+            return {'error': str(e)}
     
     def get_risk_assessment(self, prediction, confidence):
         """Assess risk level based on prediction and confidence"""

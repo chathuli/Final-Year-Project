@@ -29,7 +29,13 @@
                         <a class="nav-link active" href="/history">History</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/profile">Profile</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
                     </li>
                 </ul>
             </div>
@@ -48,8 +54,65 @@
     </div>
 
     <div class="container pb-5">
-        <div class="row">
-            <div class="col-lg-11 mx-auto">
+        <div class="page-wrapper">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <h3 class="sidebar-title">
+                    <span class="sidebar-icon">📋</span>
+                    Quick Navigation
+                </h3>
+                <ul class="sidebar-menu">
+                    <li>
+                        <a href="/" class="sidebar-link">
+                            <span class="sidebar-icon">🏠</span>
+                            Home
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/dashboard" class="sidebar-link">
+                            <span class="sidebar-icon">📈</span>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/history" class="sidebar-link active">
+                            <span class="sidebar-icon">📋</span>
+                            History
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/profile" class="sidebar-link">
+                            <span class="sidebar-icon">👤</span>
+                            Profile
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/about" class="sidebar-link">
+                            <span class="sidebar-icon">ℹ️</span>
+                            About
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-info-card">
+                        <div class="sidebar-info-title">📋 Prediction History</div>
+                        <div class="sidebar-info-text">
+                            Access all past predictions with detailed results and downloadable PDF reports.
+                        </div>
+                    </div>
+
+                    <div class="sidebar-info-card" style="margin-top: 1rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);">
+                        <div class="sidebar-info-title" style="color: #059669;">💡 Quick Tip</div>
+                        <div class="sidebar-info-text">
+                            Click "Download Report" to get a detailed PDF analysis of any prediction.
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <div class="main-content">
                 <div class="main-card">
                     <div class="card-header-custom">
                         <h3>📊 All Predictions</h3>
@@ -73,6 +136,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let allPredictions = [];
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
         // Load prediction history
         async function loadHistory() {
             try {
@@ -80,7 +147,8 @@
                 const data = await response.json();
                 
                 if (data.predictions && data.predictions.length > 0) {
-                    displayHistory(data.predictions);
+                    allPredictions = data.predictions;
+                    displayHistory(currentPage);
                 } else {
                     document.getElementById('historyTable').innerHTML = `
                         <div class="text-center py-5">
@@ -100,7 +168,12 @@
             }
         }
 
-        function displayHistory(predictions) {
+        function displayHistory(page) {
+            const totalPages = Math.ceil(allPredictions.length / itemsPerPage);
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = allPredictions.slice(startIndex, endIndex);
+
             let html = `
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -117,7 +190,7 @@
                         <tbody>
             `;
 
-            predictions.forEach(pred => {
+            pageData.forEach(pred => {
                 const badgeClass = pred.prediction === 'Benign' ? 'bg-success' : 'bg-danger';
                 const date = new Date(pred.timestamp).toLocaleString();
                 
@@ -143,7 +216,55 @@
                 </div>
             `;
 
+            // Add pagination controls
+            if (totalPages > 1) {
+                html += `
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Showing ${startIndex + 1}-${Math.min(endIndex, allPredictions.length)} of ${allPredictions.length} predictions
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0">
+                                <li class="page-item ${page === 1 ? 'disabled' : ''}">
+                                    <a class="page-link" href="#" onclick="changePage(${page - 1}); return false;">Previous</a>
+                                </li>
+                `;
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                        html += `
+                            <li class="page-item ${i === page ? 'active' : ''}">
+                                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+                            </li>
+                        `;
+                    } else if (i === page - 3 || i === page + 3) {
+                        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    }
+                }
+
+                html += `
+                                <li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                                    <a class="page-link" href="#" onclick="changePage(${page + 1}); return false;">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                `;
+            }
+
             document.getElementById('historyTable').innerHTML = html;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(allPredictions.length / itemsPerPage);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            displayHistory(currentPage);
+            
+            // Scroll to top of table
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         async function downloadReport(predictionId) {

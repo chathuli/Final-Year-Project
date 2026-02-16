@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Breast Cancer Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <style>
+        .endpoint-card {
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+        }
+        .method-badge {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .method-get { background: #28a745; color: white; }
+        .method-post { background: #007bff; color: white; }
+        .method-delete { background: #dc3545; color: white; }
+        pre[class*="language-"] {
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .sidebar {
+            position: sticky;
+            top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heartbeat"></i> Breast Cancer Detection API
+            </a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3">
+                <div class="sidebar">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">Quick Navigation</h6>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            <a href="#introduction" class="list-group-item list-group-item-action">Introduction</a>
+                            <a href="#authentication" class="list-group-item list-group-item-action">Authentication</a>
+                            <a href="#endpoints" class="list-group-item list-group-item-action">Endpoints</a>
+                            <a href="#predict" class="list-group-item list-group-item-action">- Make Prediction</a>
+                            <a href="#history" class="list-group-item list-group-item-action">- Get History</a>
+                            <a href="#statistics" class="list-group-item list-group-item-action">- Get Statistics</a>
+                            <a href="#errors" class="list-group-item list-group-item-action">Error Handling</a>
+                            <a href="#examples" class="list-group-item list-group-item-action">Code Examples</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9">
+                <!-- Introduction -->
+                <section id="introduction" class="mb-5">
+                    <h1><i class="fas fa-book"></i> API Documentation</h1>
+                    <p class="lead">RESTful API for Breast Cancer Detection System</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        This API allows you to integrate breast cancer detection capabilities into your applications.
+                    </div>
+                    
+                    <h4>Base URL</h4>
+                    <pre><code>http://localhost:5000/api/v1</code></pre>
+                    
+                    <h4>Response Format</h4>
+                    <p>All responses are in JSON format with the following structure:</p>
+                    <pre><code class="language-json">{
+    "success": true,
+    "data": {...},
+    "message": "Optional message"
+}</code></pre>
+                </section>
+
+                <!-- Authentication -->
+                <section id="authentication" class="mb-5">
+                    <h2><i class="fas fa-key"></i> Authentication</h2>
+                    <p>All API endpoints require authentication using an API token.</p>
+                    
+                    <h4>Getting Your API Token</h4>
+                    <ol>
+                        <li>Log in to your account</li>
+                        <li>Go to <a href="/profile">Profile & API Tokens</a></li>
+                        <li>Click "Create Token"</li>
+                        <li>Copy your token (you won't see it again!)</li>
+                    </ol>
+                    
+                    <h4>Using Your Token</h4>
+                    <p>Include your token in the <code>Authorization</code> header:</p>
+                    <pre><code class="language-bash">Authorization: Bearer YOUR_API_TOKEN</code></pre>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>Security:</strong> Never share your API token or commit it to version control!
+                    </div>
+                </section>
+
+                <!-- Endpoints -->
+                <section id="endpoints" class="mb-5">
+                    <h2><i class="fas fa-plug"></i> API Endpoints</h2>
+                    
+                    <!-- Predict Endpoint -->
+                    <div id="predict" class="endpoint-card card mb-4">
+                        <div class="card-header">
+                            <span class="method-badge method-post">POST</span>
+                            <code>/api/v1/predict</code>
+                        </div>
+                        <div class="card-body">
+                            <h5>Make a Prediction</h5>
+                            <p>Submit patient features to get a breast cancer prediction.</p>
+                            
+                            <h6>Request Body</h6>
+                            <pre><code class="language-json">{
+    "features": [
+        17.99, 10.38, 122.8, 1001, 0.1184,
+        0.2776, 0.3001, 0.1471, 0.2419, 0.07871,
+        1.095, 0.9053, 8.589, 153.4, 0.006399,
+        0.04904, 0.05373, 0.01587, 0.03003, 0.006193,
+        25.38, 17.33, 184.6, 2019, 0.1622,
+        0.6656, 0.7119, 0.2654, 0.4601, 0.1189
+    ]
+}</code></pre>
+
+                            <h6>Response</h6>
+                            <pre><code class="language-json">{
+    "success": true,
+    "prediction_id": 123,
+    "prediction": 1,
+    "prediction_label": "Malignant",
+    "confidence": 98.5,
+    "model_used": "Logistic Regression",
+    "all_models": {
+        "Logistic Regression": {
+            "prediction": 1,
+            "confidence": 98.5
+        },
+        "Random Forest": {
+            "prediction": 1,
+            "confidence": 97.2
+        },
+        "SVM": {
+            "prediction": 1,
+            "confidence": 96.8
+        }
+    },
+    "feature_importance": [
+        {"feature": "worst_perimeter", "value": 184.6, "importance": 0.15},
+        {"feature": "worst_area", "value": 2019, "importance": 0.12}
+    ],
+    "risk_assessment": {
+        "level": "High",
+        "message": "Immediate medical consultation recommended"
+    },
+    "timestamp": "2024-01-01T12:00:00",
+    "user": "your_username"
+}</code></pre>
+
+                            <h6>cURL Example</h6>
+                            <pre><code class="language-bash">curl -X POST http://localhost:5000/api/v1/predict \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"features": [17.99, 10.38, ...]}'</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- History Endpoint -->
+                    <div id="history" class="endpoint-card card mb-4">
+                        <div class="card-header">
+                            <span class="method-badge method-get">GET</span>
+                            <code>/api/v1/history</code>
+                        </div>
+                        <div class="card-body">
+                            <h5>Get Prediction History</h5>
+                            <p>Retrieve past predictions.</p>
+                            
+                            <h6>Query Parameters</h6>
+                            <ul>
+                                <li><code>limit</code> (optional): Number of records (default: 100)</li>
+                                <li><code>offset</code> (optional): Skip records (default: 0)</li>
+                            </ul>
+                            
+                            <h6>Response</h6>
+                            <pre><code class="language-json">{
+    "success": true,
+    "predictions": [
+        {
+            "id": 123,
+            "timestamp": "2024-01-01T12:00:00",
+            "prediction": 1,
+            "prediction_label": "Malignant",
+            "confidence": 98.5,
+            "model_name": "Logistic Regression"
+        }
+    ],
+    "total": 150,
+    "limit": 100,
+    "offset": 0
+}</code></pre>
+
+                            <h6>cURL Example</h6>
+                            <pre><code class="language-bash">curl -X GET "http://localhost:5000/api/v1/history?limit=10" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Endpoint -->
+                    <div id="statistics" class="endpoint-card card mb-4">
+                        <div class="card-header">
+                            <span class="method-badge method-get">GET</span>
+                            <code>/api/v1/statistics</code>
+                        </div>
+                        <div class="card-body">
+                            <h5>Get Statistics</h5>
+                            <p>Retrieve system statistics and analytics.</p>
+                            
+                            <h6>Response</h6>
+                            <pre><code class="language-json">{
+    "success": true,
+    "statistics": {
+        "total_predictions": 150,
+        "benign_count": 100,
+        "malignant_count": 50,
+        "average_confidence": 95.5,
+        "predictions_last_7_days": 25
+    }
+}</code></pre>
+
+                            <h6>cURL Example</h6>
+                            <pre><code class="language-bash">curl -X GET http://localhost:5000/api/v1/statistics \
+  -H "Authorization: Bearer YOUR_API_TOKEN"</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Error Handling -->
+                <section id="errors" class="mb-5">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Error Handling</h2>
+                    
+                    <h4>HTTP Status Codes</h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>200</td><td>Success</td></tr>
+                            <tr><td>400</td><td>Bad Request - Invalid input</td></tr>
+                            <tr><td>401</td><td>Unauthorized - Invalid or missing token</td></tr>
+                            <tr><td>404</td><td>Not Found</td></tr>
+                            <tr><td>500</td><td>Internal Server Error</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4>Error Response Format</h4>
+                    <pre><code class="language-json">{
+    "success": false,
+    "error": "Error type",
+    "message": "Detailed error message"
+}</code></pre>
+                </section>
+
+                <!-- Code Examples -->
+                <section id="examples" class="mb-5">
+                    <h2><i class="fas fa-code"></i> Code Examples</h2>
+                    
+                    <h4>Python</h4>
+                    <pre><code class="language-python">import requests
+
+API_TOKEN = "your_api_token_here"
+BASE_URL = "http://localhost:5000/api/v1"
+
+headers = {
+    "Authorization": f"Bearer {API_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+# Make a prediction
+features = [17.99, 10.38, 122.8, ...]  # 30 features
+response = requests.post(
+    f"{BASE_URL}/predict",
+    headers=headers,
+    json={"features": features}
+)
+
+result = response.json()
+print(f"Prediction: {result['prediction_label']}")
+print(f"Confidence: {result['confidence']}%")</code></pre>
+
+                    <h4>JavaScript (Node.js)</h4>
+                    <pre><code class="language-javascript">const axios = require('axios');
+
+const API_TOKEN = 'your_api_token_here';
+const BASE_URL = 'http://localhost:5000/api/v1';
+
+const headers = {
+    'Authorization': `Bearer ${API_TOKEN}`,
+    'Content-Type': 'application/json'
+};
+
+// Make a prediction
+const features = [17.99, 10.38, 122.8, ...];  // 30 features
+
+axios.post(`${BASE_URL}/predict`, { features }, { headers })
+    .then(response => {
+        console.log('Prediction:', response.data.prediction_label);
+        console.log('Confidence:', response.data.confidence + '%');
+    })
+    .catch(error => {
+        console.error('Error:', error.response.data);
+    });</code></pre>
+                </section>
+
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> 
+                    <strong>Need Help?</strong> Contact support or check the <a href="/about">About</a> page for more information.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+</body>
+</html>
