@@ -10,7 +10,8 @@ from datetime import datetime
 from enhanced_predict import EnhancedPredictor
 from database import PredictionDatabase
 from report_generator import ReportGenerator
-from auth import AuthManager, login_required, api_token_required
+from auth import AuthManager, login_required, api_token_required, admin_required, doctor_required
+from appointments import AppointmentManager
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'your-secret-key-change-this-in-production'  # Change this!
@@ -20,6 +21,7 @@ predictor = EnhancedPredictor()
 db = PredictionDatabase()
 report_gen = ReportGenerator()
 auth_manager = AuthManager()
+appointment_manager = AppointmentManager()
 
 # ============================================================================
 # AUTHENTICATION ROUTES
@@ -27,10 +29,31 @@ auth_manager = AuthManager()
 
 @app.route('/login')
 def login():
-    """Login page"""
+    """Login selection page"""
     if 'user_id' in session:
         return redirect(url_for('home'))
-    return render_template('login.html')
+    return render_template('login_select.html')
+
+@app.route('/login/admin')
+def login_admin():
+    """Admin login page"""
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+    return render_template('admin_login.html')
+
+@app.route('/login/doctor')
+def login_doctor():
+    """Doctor login page"""
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+    return render_template('doctor_login.html')
+
+@app.route('/login/user')
+def login_user():
+    """User login page"""
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+    return render_template('user_login.html')
 
 @app.route('/register')
 def register():
@@ -76,6 +99,15 @@ def api_login():
     if result['success']:
         session['user_id'] = result['user']['id']
         session['username'] = result['user']['username']
+        session['role'] = result['user']['role']
+        
+        # Redirect based on role
+        if result['user']['role'] == 'admin':
+            result['redirect'] = '/admin'
+        elif result['user']['role'] == 'doctor':
+            result['redirect'] = '/doctor'
+        else:
+            result['redirect'] = '/'
     
     return jsonify(result)
 
@@ -110,7 +142,13 @@ def api_revoke_token(token_id):
 @app.route('/')
 @login_required
 def home():
-    """Home page"""
+    """Home page - Symptom Checker (main feature)"""
+    return render_template('symptom_input.html')
+
+@app.route('/advanced')
+@doctor_required
+def advanced():
+    """Advanced analysis page - Technical feature input"""
     return render_template('index.html')
 
 @app.route('/predict', methods=['POST'])
@@ -476,15 +514,415 @@ def api_docs():
     """API Documentation page"""
     return render_template('api_docs.html')
 
+# ============================================================================
+# ADMIN ROUTES
+# ============================================================================
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    """Admin dashboard"""
+    print(f"Admin dashboard accessed by user: {session.get('username')}, role: {session.get('role')}")
+    return render_template('admin_dashboard.html')
+
+@app.route('/api/admin/statistics')
+@admin_required
+def admin_statistics():
+    """Get admin statistics"""
+    try:
+        # Get user statistics
+        all_users = auth_manager.get_all_users()
+        doctors = [u for u in all_users if u['role'] == 'doctor']
+        patients = [u for u in all_users if u['role'] == 'user']
+        active_users = [u for u in all_users if u['is_active'] == 1]
+        inactive_users = [u for u in all_users if u['is_active'] == 0]
+        
+        # Get prediction statistics
+        pred_stats = db.get_statistics()
+        
+        return jsonify({
+            'total_users': len(all_users),
+            'total_doctors': len(doctors),
+            'total_patients': len(patients),
+            'active_users': len(active_users),
+            'inactive_users': len(inactive_users),
+            'total_predictions': pred_stats.get('total', 0),
+            'benign_count': pred_stats.get('benign', 0),
+            'malignant_count': pred_stats.get('malignant', 0),
+            'avg_confidence': pred_stats.get('avg_confidence', 0)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/users')
+@admin_required
+def admin_get_users():
+    """Get all users or filtered by role"""
+    try:
+        role = request.args.get('role')
+        users = auth_manager.get_all_users(role=role)
+        return jsonify({'users': users})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/register-doctor', methods=['POST'])
+@admin_required
+def admin_register_doctor():
+    """Register a new doctor"""
+    try:
+        data = request.get_json()
+        result = auth_manager.register_user(
+            username=data.get('username'),
+            email=data.get('email'),
+            password=data.get('password'),
+            full_name=data.get('full_name'),
+            role='doctor',
+            created_by=session['user_id']
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/users/<int:user_id>/toggle', methods=['POST'])
+@admin_required
+def admin_toggle_user(user_id):
+    """Toggle user active status"""
+    try:
+        result = auth_manager.toggle_user_status(user_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# DOCTOR ROUTES
+# ============================================================================
+
+@app.route('/doctor')
+@doctor_required
+def doctor_dashboard():
+    """Doctor dashboard"""
+    return render_template('doctor_dashboard.html')
+
+# ============================================================================
+# SYMPTOM-BASED PREDICTION (NEW FEATURE)
+# ============================================================================
+
+@app.route('/symptoms')
+@login_required
+def symptoms():
+    """Symptom-based input page (redirects to home)"""
+    return redirect(url_for('home'))
+
+@app.route('/predict_symptoms', methods=['POST'])
+@login_required
+def predict_symptoms():
+    """
+    Predict based on user symptoms
+    Converts symptoms to Wisconsin dataset features
+    """
+    try:
+        from symptom_mapper import SymptomMapper
+        
+        # Get symptom data
+        data = request.get_json()
+        
+        # Initialize mapper
+        mapper = SymptomMapper()
+        
+        # Convert symptoms to features
+        features = mapper.map_symptoms_to_features(data)
+        
+        # Get risk assessment
+        risk_assessment = mapper.get_risk_assessment(data)
+        
+        # Make prediction with all models
+        result = predictor.predict_all_models(features)
+        
+        # Save to database
+        prediction_id = db.save_prediction(
+            prediction=result['best_model']['prediction'],
+            confidence=result['best_model']['confidence'],
+            model_name=result['best_model']['name'],
+            features=features,
+            all_predictions=result['all_models']
+        )
+        
+        # Format response
+        response = {
+            'success': True,
+            'prediction_id': prediction_id,
+            'prediction': result['best_model']['prediction_label'],
+            'confidence': result['best_model']['confidence'],
+            'model_used': result['best_model']['name'],
+            'all_models': result['all_models'],
+            'risk_assessment': risk_assessment,
+            'symptoms_provided': data,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/predict_image', methods=['POST'])
+@login_required
+def predict_image():
+    """
+    Predict based on uploaded medical image
+    Analyzes image and extracts features for prediction
+    """
+    try:
+        from image_analyzer import ImageAnalyzer
+        
+        # Check if image file is present
+        if 'image' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No image file provided'
+            }), 400
+        
+        image_file = request.files['image']
+        
+        if image_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No image file selected'
+            }), 400
+        
+        # Initialize analyzer
+        analyzer = ImageAnalyzer()
+        
+        # Analyze image
+        analysis_result = analyzer.analyze_image(image_file)
+        
+        if not analysis_result['success']:
+            return jsonify(analysis_result), 400
+        
+        # Get features from image
+        features = analysis_result['features']
+        
+        # Make prediction with all models
+        result = predictor.predict_all_models(features)
+        
+        # Get risk assessment
+        risk = predictor.get_risk_assessment(
+            result['best_model']['prediction'],
+            result['best_model']['confidence']
+        )
+        
+        # Save to database
+        prediction_id = db.save_prediction(
+            prediction=result['best_model']['prediction'],
+            confidence=result['best_model']['confidence'],
+            model_name=result['best_model']['name'],
+            features=features,
+            all_predictions=result['all_models']
+        )
+        
+        # Format response
+        response = {
+            'success': True,
+            'prediction_id': prediction_id,
+            'prediction': result['best_model']['prediction'],
+            'prediction_label': result['best_model']['prediction_label'],
+            'confidence': result['best_model']['confidence'],
+            'model_used': result['best_model']['name'],
+            'all_models': result['all_models'],
+            'risk_assessment': risk,
+            'image_info': analysis_result['image_info'],
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ============================================================================
+# APPOINTMENT ROUTES
+# ============================================================================
+
+@app.route('/appointments')
+@login_required
+def appointments():
+    """Appointments booking page"""
+    return render_template('appointments.html')
+
+@app.route('/api/appointments/doctors')
+@login_required
+def api_get_doctors():
+    """Get all doctors with locations"""
+    try:
+        doctors = appointment_manager.get_all_doctors()
+        return jsonify({'doctors': doctors})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/appointments/locations/<int:doctor_id>')
+@login_required
+def api_get_doctor_locations(doctor_id):
+    """Get locations for a specific doctor"""
+    try:
+        locations = appointment_manager.get_doctor_locations(doctor_id)
+        return jsonify({'locations': locations})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/appointments/slots')
+@login_required
+def api_get_available_slots():
+    """Get available time slots"""
+    try:
+        doctor_id = request.args.get('doctor_id', type=int)
+        location_id = request.args.get('location_id', type=int)
+        date = request.args.get('date')
+        
+        if not all([doctor_id, location_id, date]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+        
+        slots = appointment_manager.get_available_slots(doctor_id, location_id, date)
+        return jsonify({'slots': slots})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/appointments/book', methods=['POST'])
+@login_required
+def api_book_appointment():
+    """Book an appointment"""
+    try:
+        data = request.get_json()
+        
+        result = appointment_manager.book_appointment(
+            patient_id=session['user_id'],
+            doctor_id=data.get('doctor_id'),
+            location_id=data.get('location_id'),
+            appointment_date=data.get('appointment_date'),
+            appointment_time=data.get('appointment_time'),
+            reason=data.get('reason'),
+            notes=data.get('notes')
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/appointments/my')
+@login_required
+def api_get_my_appointments():
+    """Get user's appointments"""
+    try:
+        appointments = appointment_manager.get_patient_appointments(session['user_id'])
+        return jsonify({'appointments': appointments})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/appointments/<int:appointment_id>/cancel', methods=['POST'])
+@login_required
+def api_cancel_appointment(appointment_id):
+    """Cancel an appointment"""
+    try:
+        result = appointment_manager.cancel_appointment(appointment_id, session['user_id'])
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Doctor appointment management routes
+@app.route('/api/doctor/appointments')
+@doctor_required
+def api_get_doctor_appointments():
+    """Get doctor's appointments"""
+    try:
+        date = request.args.get('date')
+        status = request.args.get('status')
+        
+        appointments = appointment_manager.get_doctor_appointments(
+            session['user_id'], 
+            date=date, 
+            status=status
+        )
+        return jsonify({'appointments': appointments})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/doctor/locations', methods=['GET', 'POST'])
+@doctor_required
+def api_doctor_locations():
+    """Manage doctor locations"""
+    if request.method == 'GET':
+        try:
+            locations = appointment_manager.get_doctor_locations(session['user_id'])
+            return jsonify({'locations': locations})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            result = appointment_manager.add_location(
+                doctor_id=session['user_id'],
+                location_name=data.get('location_name'),
+                address=data.get('address'),
+                city=data.get('city'),
+                phone=data.get('phone')
+            )
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/doctor/availability', methods=['GET', 'POST'])
+@doctor_required
+def api_doctor_availability():
+    """Manage doctor availability"""
+    if request.method == 'GET':
+        try:
+            location_id = request.args.get('location_id', type=int)
+            availability = appointment_manager.get_doctor_availability(
+                session['user_id'], 
+                location_id=location_id
+            )
+            return jsonify({'availability': availability})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            result = appointment_manager.add_availability(
+                doctor_id=session['user_id'],
+                location_id=data.get('location_id'),
+                day_of_week=data.get('day_of_week'),
+                start_time=data.get('start_time'),
+                end_time=data.get('end_time'),
+                slot_duration=data.get('slot_duration', 30)
+            )
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     # Load models on startup
     predictor.load_models()
+    
+    # Create default admin account if not exists
+    auth_manager.create_default_admin()
     
     # Run app
     print("=" * 50)
     print("🚀 Breast Cancer Detection System")
     print("=" * 50)
     print("Server running at: http://localhost:5000")
+    print("Default Admin: admin / admin123")
     print("Press Ctrl+C to stop")
     print("=" * 50)
     

@@ -22,6 +22,24 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/">Home</a>
                     </li>
+                    {% if session.role in ['doctor', 'admin'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/advanced">Advanced Analysis</a>
+                    </li>
+                    {% endif %}
+                    {% if session.role == 'doctor' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/doctor">Doctor Panel</a>
+                    </li>
+                    {% endif %}
+                    {% if session.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">Admin Panel</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments">Appointments</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">Dashboard</a>
                     </li>
@@ -54,66 +72,7 @@
     </div>
 
     <div class="container pb-5">
-        <div class="page-wrapper">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <h3 class="sidebar-title">
-                    <span class="sidebar-icon">📋</span>
-                    Quick Navigation
-                </h3>
-                <ul class="sidebar-menu">
-                    <li>
-                        <a href="/" class="sidebar-link">
-                            <span class="sidebar-icon">🏠</span>
-                            Home
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/dashboard" class="sidebar-link">
-                            <span class="sidebar-icon">📈</span>
-                            Dashboard
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/history" class="sidebar-link active">
-                            <span class="sidebar-icon">📋</span>
-                            History
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/profile" class="sidebar-link">
-                            <span class="sidebar-icon">👤</span>
-                            Profile
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/about" class="sidebar-link">
-                            <span class="sidebar-icon">ℹ️</span>
-                            About
-                        </a>
-                    </li>
-                </ul>
-
-                <div class="sidebar-section">
-                    <div class="sidebar-info-card">
-                        <div class="sidebar-info-title">📋 Prediction History</div>
-                        <div class="sidebar-info-text">
-                            Access all past predictions with detailed results and downloadable PDF reports.
-                        </div>
-                    </div>
-
-                    <div class="sidebar-info-card" style="margin-top: 1rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);">
-                        <div class="sidebar-info-title" style="color: #059669;">💡 Quick Tip</div>
-                        <div class="sidebar-info-text">
-                            Click "Download Report" to get a detailed PDF analysis of any prediction.
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Content -->
-            <div class="main-content">
-                <div class="main-card">
+        <div class="main-card">
                     <div class="card-header-custom">
                         <h3>📊 All Predictions</h3>
                         <p class="mb-0 mt-2 header-subtitle">Complete history of all predictions made by the system</p>
@@ -127,8 +86,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
     </div>
 
     <div class="stethoscope-decoration"></div>

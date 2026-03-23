@@ -23,6 +23,24 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/">Home</a>
                     </li>
+                    {% if session.role in ['doctor', 'admin'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/advanced">Advanced Analysis</a>
+                    </li>
+                    {% endif %}
+                    {% if session.role == 'doctor' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/doctor">Doctor Panel</a>
+                    </li>
+                    {% endif %}
+                    {% if session.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">Admin Panel</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments">Appointments</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="/dashboard">Dashboard</a>
                     </li>
@@ -55,75 +73,8 @@
     </div>
 
     <div class="container pb-5">
-        <div class="page-wrapper">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <h3 class="sidebar-title">
-                    <span class="sidebar-icon">📊</span>
-                    Quick Navigation
-                </h3>
-                <ul class="sidebar-menu">
-                    <li>
-                        <a href="/" class="sidebar-link">
-                            <span class="sidebar-icon">🏠</span>
-                            Home
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/dashboard" class="sidebar-link active">
-                            <span class="sidebar-icon">📈</span>
-                            Dashboard
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/history" class="sidebar-link">
-                            <span class="sidebar-icon">📋</span>
-                            History
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/profile" class="sidebar-link">
-                            <span class="sidebar-icon">👤</span>
-                            Profile
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/about" class="sidebar-link">
-                            <span class="sidebar-icon">ℹ️</span>
-                            About
-                        </a>
-                    </li>
-                </ul>
-
-                <div class="sidebar-section">
-                    <div class="sidebar-info-card">
-                        <div class="sidebar-info-title">📊 Analytics Overview</div>
-                        <div class="sidebar-info-text">
-                            View comprehensive statistics and visualizations of all predictions made by the system.
-                        </div>
-                    </div>
-
-                    <div class="sidebar-stats" id="sidebarStats">
-                        <div class="sidebar-stat-item">
-                            <span class="sidebar-stat-label">Total</span>
-                            <span class="sidebar-stat-value" id="sidebarTotal">0</span>
-                        </div>
-                        <div class="sidebar-stat-item">
-                            <span class="sidebar-stat-label">Benign</span>
-                            <span class="sidebar-stat-value" style="color: #10b981;" id="sidebarBenign">0</span>
-                        </div>
-                        <div class="sidebar-stat-item">
-                            <span class="sidebar-stat-label">Malignant</span>
-                            <span class="sidebar-stat-value" style="color: #ef4444;" id="sidebarMalignant">0</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main Content -->
-            <div class="main-content">
-                <!-- Statistics Cards -->
-                <div class="stats-grid mb-4">
+        <!-- Statistics Cards -->
+        <div class="stats-grid mb-4">
                     <div class="stat-card">
                         <div class="stat-value" id="totalPredictions">0</div>
                         <div class="stat-label">Total Predictions</div>
@@ -161,8 +112,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
     </div>
 
     <div class="stethoscope-decoration"></div>
@@ -180,11 +129,6 @@
                 document.getElementById('benignCount').textContent = stats.benign;
                 document.getElementById('malignantCount').textContent = stats.malignant;
                 document.getElementById('avgConfidence').textContent = stats.avg_confidence + '%';
-                
-                // Update sidebar stats
-                document.getElementById('sidebarTotal').textContent = stats.total;
-                document.getElementById('sidebarBenign').textContent = stats.benign;
-                document.getElementById('sidebarMalignant').textContent = stats.malignant;
                 
                 // Create pie chart
                 createPieChart(stats.benign, stats.malignant);

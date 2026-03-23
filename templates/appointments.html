@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Appointment - Breast Cancer Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .doctor-card {
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .doctor-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+            transform: translateY(-5px);
+        }
+        .doctor-card.selected {
+            border-color: #667eea;
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+        .location-card {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .location-card:hover {
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.05);
+        }
+        .location-card.selected {
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        .time-slot {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .time-slot:hover {
+            border-color: #667eea;
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        .time-slot.selected {
+            border-color: #667eea;
+            background-color: #667eea;
+            color: white;
+        }
+        .time-slot.booked {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            border-bottom: 3px solid #dee2e6;
+            color: #6c757d;
+        }
+        .step.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .step.completed {
+            border-bottom-color: #28a745;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏥 AI Cancer Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                    {% if session.role in ['doctor', 'admin'] %}
+                    <li class="nav-item"><a class="nav-link" href="/advanced">Advanced Analysis</a></li>
+                    {% endif %}
+                    {% if session.role == 'doctor' %}
+                    <li class="nav-item"><a class="nav-link" href="/doctor">Doctor Panel</a></li>
+                    {% endif %}
+                    {% if session.role == 'admin' %}
+                    <li class="nav-item"><a class="nav-link" href="/admin">Admin Panel</a></li>
+                    {% endif %}
+                    <li class="nav-item"><a class="nav-link active" href="/appointments">Appointments</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/profile">Profile</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <div class="medical-badge">
+                <span>📅</span>
+                <span>Doctor Appointments</span>
+            </div>
+            <h1 class="hero-title">Book an Appointment</h1>
+            <p class="hero-subtitle">Schedule a consultation with our specialists</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1-indicator">
+                <i class="fas fa-user-md fa-2x mb-2"></i>
+                <div>Select Doctor</div>
+            </div>
+            <div class="step" id="step2-indicator">
+                <i class="fas fa-map-marker-alt fa-2x mb-2"></i>
+                <div>Choose Location</div>
+            </div>
+            <div class="step" id="step3-indicator">
+                <i class="fas fa-calendar fa-2x mb-2"></i>
+                <div>Pick Date & Time</div>
+            </div>
+            <div class="step" id="step4-indicator">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <div>Confirm</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Select Doctor -->
+        <div id="step1" class="booking-step">
+            <div class="main-card">
+                <div class="card-header-custom">
+                    <h3>👨‍⚕️ Select a Doctor</h3>
+                </div>
+                <div class="card-body-custom">
+                    <div id="doctorsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Select Location -->
+        <div id="step2" class="booking-step" style="display: none;">
+            <div class="main-card">
+                <div class="card-header-custom">
+                    <h3>📍 Choose Location</h3>
+                </div>
+                <div class="card-body-custom">
+                    <div id="locationsList"></div>
+                    <button class="btn btn-secondary mt-3" onclick="goToStep(1)">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Select Date & Time -->
+        <div id="step3" class="booking-step" style="display: none;">
+            <div class="main-card">
+                <div class="card-header-custom">
+                    <h3>📅 Select Date & Time</h3>
+                </div>
+                <div class="card-body-custom">
+                    <div class="mb-4">
+                        <label for="appointmentDate" class="form-label">Select Date</label>
+                        <input type="date" class="form-control" id="appointmentDate" onchange="loadAvailableSlots()">
+                    </div>
+                    <div id="timeSlotsContainer" style="display: none;">
+                        <h5>Available Time Slots</h5>
+                        <div id="timeSlotsList"></div>
+                    </div>
+                    <button class="btn btn-secondary mt-3" onclick="goToStep(2)">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Confirm Booking -->
+        <div id="step4" class="booking-step" style="display: none;">
+            <div class="main-card">
+                <div class="card-header-custom">
+                    <h3>✅ Confirm Appointment</h3>
+                </div>
+                <div class="card-body-custom">
+                    <div id="bookingSummary"></div>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason for Visit</label>
+                        <textarea class="form-control" id="reason" rows="2" placeholder="Brief description of your concern"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Additional Notes (Optional)</label>
+                        <textarea class="form-control" id="notes" rows="2" placeholder="Any additional information"></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-lg" onclick="confirmBooking()">
+                            <i class="fas fa-check"></i> Confirm Booking
+                        </button>
+                        <button class="btn btn-secondary" onclick="goToStep(3)">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Appointments Section -->
+        <div class="main-card mt-5">
+            <div class="card-header-custom">
+                <h3>📋 My Appointments</h3>
+            </div>
+            <div class="card-body-custom">
+                <div id="myAppointments"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedDoctor = null;
+        let selectedLocation = null;
+        let selectedDate = null;
+        let selectedTime = null;
+
+        // Load doctors on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDoctors();
+            loadMyAppointments();
+            
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').min = today;
+        });
+
+        async function loadDoctors() {
+            try {
+                const response = await fetch('/api/appointments/doctors');
+                const data = await response.json();
+                
+                const doctorsList = document.getElementById('doctorsList');
+                
+                if (data.doctors && data.doctors.length > 0) {
+                    doctorsList.innerHTML = data.doctors.map(doctor => `
+                        <div class="doctor-card" onclick="selectDoctor(${doctor.id}, '${doctor.full_name}')">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-user-md fa-3x text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1">${doctor.full_name}</h5>
+                                    <p class="mb-1 text-muted">${doctor.email}</p>
+                                    <small class="text-success">
+                                        <i class="fas fa-map-marker-alt"></i> 
+                                        ${doctor.location_count} location(s) available
+                                    </small>
+                                </div>
+                                <div>
+                                    <i class="fas fa-chevron-right fa-2x text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    doctorsList.innerHTML = '<p class="text-center text-muted">No doctors available at the moment.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading doctors:', error);
+            }
+        }
+
+        async function selectDoctor(doctorId, doctorName) {
+            selectedDoctor = { id: doctorId, name: doctorName };
+            
+            // Load locations for this doctor
+            try {
+                const response = await fetch(`/api/appointments/locations/${doctorId}`);
+                const data = await response.json();
+                
+                const locationsList = document.getElementById('locationsList');
+                
+                if (data.locations && data.locations.length > 0) {
+                    locationsList.innerHTML = data.locations.map(loc => `
+                        <div class="location-card" onclick="selectLocation(${loc.id}, '${loc.location_name}', '${loc.address}', '${loc.city}', '${loc.phone || ''}')">
+                            <h5><i class="fas fa-hospital"></i> ${loc.location_name}</h5>
+                            <p class="mb-1"><i class="fas fa-map-marker-alt"></i> ${loc.address}, ${loc.city}</p>
+                            ${loc.phone ? `<p class="mb-0"><i class="fas fa-phone"></i> ${loc.phone}</p>` : ''}
+                        </div>
+                    `).join('');
+                    
+                    goToStep(2);
+                } else {
+                    alert('This doctor has no available locations.');
+                }
+            } catch (error) {
+                console.error('Error loading locations:', error);
+                alert('Error loading locations. Please try again.');
+            }
+        }
+
+        function selectLocation(id, name, address, city, phone) {
+            selectedLocation = { id, name, address, city, phone };
+            goToStep(3);
+        }
+
+        async function loadAvailableSlots() {
+            const date = document.getElementById('appointmentDate').value;
+            if (!date) return;
+            
+            selectedDate = date;
+            
+            try {
+                const response = await fetch(`/api/appointments/slots?doctor_id=${selectedDoctor.id}&location_id=${selectedLocation.id}&date=${date}`);
+                const data = await response.json();
+                
+                const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+                const timeSlotsList = document.getElementById('timeSlotsList');
+                
+                if (data.slots && data.slots.length > 0) {
+                    timeSlotsList.innerHTML = data.slots.map(slot => `
+                        <div class="time-slot" onclick="selectTime('${slot.time}', '${slot.display}')">
+                            ${slot.display}
+                        </div>
+                    `).join('');
+                    timeSlotsContainer.style.display = 'block';
+                } else {
+                    timeSlotsList.innerHTML = '<p class="text-center text-muted">No available slots for this date.</p>';
+                    timeSlotsContainer.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading slots:', error);
+            }
+        }
+
+        function selectTime(time, display) {
+            selectedTime = { time, display };
+            
+            // Remove previous selection
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+            
+            // Add selection to clicked slot
+            event.target.classList.add('selected');
+            
+            // Show summary
+            setTimeout(() => goToStep(4), 300);
+        }
+
+        function goToStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.booking-step').forEach(s => s.style.display = 'none');
+            
+            // Show selected step
+            document.getElementById(`step${step}`).style.display = 'block';
+            
+            // Update step indicators
+            for (let i = 1; i <= 4; i++) {
+                const indicator = document.getElementById(`step${i}-indicator`);
+                indicator.classList.remove('active', 'completed');
+                
+                if (i < step) {
+                    indicator.classList.add('completed');
+                } else if (i === step) {
+                    indicator.classList.add('active');
+                }
+            }
+            
+            // Show summary if on step 4
+            if (step === 4) {
+                showBookingSummary();
+            }
+        }
+
+        function showBookingSummary() {
+            const summary = document.getElementById('bookingSummary');
+            summary.innerHTML = `
+                <div class="alert alert-info">
+                    <h5>Appointment Details</h5>
+                    <hr>
+                    <p><strong>Doctor:</strong> ${selectedDoctor.name}</p>
+                    <p><strong>Location:</strong> ${selectedLocation.name}</p>
+                    <p><strong>Address:</strong> ${selectedLocation.address}, ${selectedLocation.city}</p>
+                    ${selectedLocation.phone ? `<p><strong>Phone:</strong> ${selectedLocation.phone}</p>` : ''}
+                    <p><strong>Date:</strong> ${new Date(selectedDate).toLocaleDateString()}</p>
+                    <p><strong>Time:</strong> ${selectedTime.display}</p>
+                </div>
+            `;
+        }
+
+        async function confirmBooking() {
+            const reason = document.getElementById('reason').value;
+            const notes = document.getElementById('notes').value;
+            
+            if (!reason) {
+                alert('Please provide a reason for your visit.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/appointments/book', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        doctor_id: selectedDoctor.id,
+                        location_id: selectedLocation.id,
+                        appointment_date: selectedDate,
+                        appointment_time: selectedTime.time,
+                        reason: reason,
+                        notes: notes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Appointment booked successfully!');
+                    
+                    // Reset form
+                    selectedDoctor = null;
+                    selectedLocation = null;
+                    selectedDate = null;
+                    selectedTime = null;
+                    document.getElementById('reason').value = '';
+                    document.getElementById('notes').value = '';
+                    
+                    // Reload appointments
+                    loadMyAppointments();
+                    
+                    // Go back to step 1
+                    goToStep(1);
+                } else {
+                    alert('Error: ' + (data.error || 'Booking failed'));
+                }
+            } catch (error) {
+                console.error('Error booking appointment:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        async function loadMyAppointments() {
+            try {
+                const response = await fetch('/api/appointments/my');
+                const data = await response.json();
+                
+                const appointmentsDiv = document.getElementById('myAppointments');
+                
+                if (data.appointments && data.appointments.length > 0) {
+                    appointmentsDiv.innerHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Doctor</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.appointments.map(apt => `
+                                        <tr>
+                                            <td>${new Date(apt.appointment_date).toLocaleDateString()}</td>
+                                            <td>${apt.appointment_time}</td>
+                                            <td>${apt.doctor_name}</td>
+                                            <td>${apt.location_name}, ${apt.city}</td>
+                                            <td><span class="badge bg-${getStatusColor(apt.status)}">${apt.status}</span></td>
+                                            <td>
+                                                ${apt.status === 'pending' ? `
+                                                    <button class="btn btn-sm btn-danger" onclick="cancelAppointment(${apt.id})">
+                                                        <i class="fas fa-times"></i> Cancel
+                                                    </button>
+                                                ` : ''}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    appointmentsDiv.innerHTML = '<p class="text-center text-muted">No appointments yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading appointments:', error);
+            }
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'pending': 'warning',
+                'confirmed': 'success',
+                'completed': 'info',
+                'cancelled': 'danger'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        async function cancelAppointment(appointmentId) {
+            if (!confirm('Are you sure you want to cancel this appointment?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/appointments/${appointmentId}/cancel`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Appointment cancelled successfully');
+                    loadMyAppointments();
+                } else {
+                    alert('Error: ' + (data.error || 'Cancellation failed'));
+                }
+            } catch (error) {
+                console.error('Error cancelling appointment:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>

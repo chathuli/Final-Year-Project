@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - AI Breast Cancer Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏥 AI Cancer Detection</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    {% if session.role in ['doctor', 'admin'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/advanced">Advanced Analysis</a>
+                    </li>
+                    {% endif %}
+                    {% if session.role == 'doctor' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/doctor">Doctor Panel</a>
+                    </li>
+                    {% endif %}
+                    {% if session.role == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">Admin Panel</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments">Appointments</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history">History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/profile">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <div class="medical-badge">
+                <span>🩺</span>
+                <span>Symptom-Based Analysis</span>
+            </div>
+            <h1 class="hero-title">Symptom Checker</h1>
+            <p class="hero-subtitle">Enter your symptoms for AI-powered risk assessment</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        <!-- Tab Navigation -->
+        <ul class="nav nav-pills nav-fill mb-4" id="analysisTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="symptom-tab" data-bs-toggle="pill" data-bs-target="#symptom-panel" type="button" role="tab">
+                    <i class="fas fa-notes-medical"></i> Symptom Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="image-tab" data-bs-toggle="pill" data-bs-target="#image-panel" type="button" role="tab">
+                    <i class="fas fa-image"></i> Image Analysis
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="analysisTabContent">
+            <!-- Symptom Analysis Tab -->
+            <div class="tab-pane fade show active" id="symptom-panel" role="tabpanel">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="main-card">
+                            <div class="card-header-custom">
+                                <h3>🩺 Enter Your Symptoms</h3>
+                                <p class="mb-0 mt-2 header-subtitle">Provide information about your symptoms for analysis</p>
+                            </div>
+                            <div class="card-body-custom">
+                                <form id="symptomForm">
+                            <!-- Age -->
+                            <div class="mb-4">
+                                <label for="age" class="form-label">Age</label>
+                                <input type="number" class="form-control" id="age" name="age" min="18" max="100" required>
+                                <small class="text-muted">Your current age</small>
+                            </div>
+
+                            <!-- Lump -->
+                            <div class="mb-4">
+                                <label class="form-label">Breast Lump</label>
+                                <select class="form-select" id="lump" name="lump" required>
+                                    <option value="none">No lump detected</option>
+                                    <option value="small">Small lump (< 2cm)</option>
+                                    <option value="large">Large lump (≥ 2cm)</option>
+                                </select>
+                                <small class="text-muted">Have you noticed any lumps in your breast?</small>
+                            </div>
+
+                            <!-- Pain -->
+                            <div class="mb-4">
+                                <label class="form-label">Breast Pain</label>
+                                <select class="form-select" id="pain" name="pain" required>
+                                    <option value="none">No pain</option>
+                                    <option value="mild">Mild discomfort</option>
+                                    <option value="severe">Severe pain</option>
+                                </select>
+                                <small class="text-muted">Level of pain or discomfort</small>
+                            </div>
+
+                            <!-- Skin Changes -->
+                            <div class="mb-4">
+                                <label class="form-label">Skin Changes</label>
+                                <select class="form-select" id="skin_change" name="skin_change" required>
+                                    <option value="none">No changes</option>
+                                    <option value="dimpling">Dimpling or puckering</option>
+                                    <option value="redness">Redness or inflammation</option>
+                                </select>
+                                <small class="text-muted">Any changes in breast skin appearance?</small>
+                            </div>
+
+                            <!-- Nipple Discharge -->
+                            <div class="mb-4">
+                                <label class="form-label">Nipple Discharge</label>
+                                <select class="form-select" id="nipple_discharge" name="nipple_discharge" required>
+                                    <option value="none">No discharge</option>
+                                    <option value="clear">Clear fluid</option>
+                                    <option value="bloody">Bloody discharge</option>
+                                </select>
+                                <small class="text-muted">Any unusual discharge from nipple?</small>
+                            </div>
+
+                            <!-- Family History -->
+                            <div class="mb-4">
+                                <label class="form-label">Family History</label>
+                                <select class="form-select" id="family_history" name="family_history" required>
+                                    <option value="no">No family history</option>
+                                    <option value="yes">Family history of breast cancer</option>
+                                </select>
+                                <small class="text-muted">Has anyone in your family had breast cancer?</small>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <span id="btnText">🔍 Analyze Symptoms</span>
+                                    <span id="btnLoading" class="d-none">
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        Analyzing...
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Results Section -->
+                        <div id="results" class="mt-4" style="display: none;">
+                            <hr>
+                            <h4 class="mb-3">📊 Analysis Results</h4>
+                            <div id="resultsContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Analysis Tab -->
+    <div class="tab-pane fade" id="image-panel" role="tabpanel">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="main-card">
+                    <div class="card-header-custom">
+                        <h3>📷 Upload Medical Image</h3>
+                        <p class="mb-0 mt-2 header-subtitle">Upload a mammogram or breast ultrasound image for AI analysis</p>
+                    </div>
+                    <div class="card-body-custom">
+                        <form id="imageForm" enctype="multipart/form-data">
+                            <!-- Image Upload -->
+                            <div class="mb-4">
+                                <label for="imageFile" class="form-label">Select Image</label>
+                                <input type="file" class="form-control" id="imageFile" name="image" accept="image/*" required>
+                                <small class="text-muted">Supported formats: JPG, PNG, BMP, TIFF</small>
+                            </div>
+
+                            <!-- Image Preview -->
+                            <div id="imagePreview" class="mb-4" style="display: none;">
+                                <label class="form-label">Image Preview</label>
+                                <div class="text-center">
+                                    <img id="previewImg" src="" alt="Preview" style="max-width: 100%; max-height: 400px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <span id="imgBtnText">🔍 Analyze Image</span>
+                                    <span id="imgBtnLoading" class="d-none">
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        Analyzing...
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Image Results Section -->
+                        <div id="imageResults" class="mt-4" style="display: none;">
+                            <hr>
+                            <h4 class="mb-3">📊 Image Analysis Results</h4>
+                            <div id="imageResultsContent"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Info Card -->
+                <div class="main-card mt-4">
+                    <div class="card-body-custom">
+                        <h5>ℹ️ Image Analysis Information</h5>
+                        <ul class="mb-0">
+                            <li>Upload clear mammogram or ultrasound images</li>
+                            <li>AI analyzes image features and patterns</li>
+                            <li>Results include confidence levels and risk assessment</li>
+                            <li>This is a screening tool, not a diagnostic device</li>
+                            <li>Always consult with a radiologist for proper diagnosis</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                <!-- Info Card -->
+                <div class="main-card mt-4">
+                    <div class="card-body-custom">
+                        <h5>ℹ️ Important Information</h5>
+                        <ul class="mb-3">
+                            <li>This tool provides a preliminary risk assessment based on symptoms</li>
+                            <li>It uses AI to convert symptoms into medical features for analysis</li>
+                            <li>Results should NOT replace professional medical diagnosis</li>
+                            <li>Always consult a healthcare professional for proper evaluation</li>
+                        </ul>
+                        <hr>
+                        <div class="text-center">
+                            <p class="mb-2"><strong>Medical Professional?</strong></p>
+                            <a href="/advanced" class="btn btn-outline-primary">
+                                🔬 Use Advanced Analysis
+                            </a>
+                            <small class="text-muted d-block mt-2">
+                                For technical feature-based predictions
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stethoscope-decoration"></div>
+    <div class="medical-pattern"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        document.getElementById('symptomForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            document.getElementById('btnText').classList.add('d-none');
+            document.getElementById('btnLoading').classList.remove('d-none');
+            
+            // Collect form data
+            const formData = {
+                age: parseInt(document.getElementById('age').value),
+                lump: document.getElementById('lump').value,
+                pain: document.getElementById('pain').value,
+                skin_change: document.getElementById('skin_change').value,
+                nipple_discharge: document.getElementById('nipple_discharge').value,
+                family_history: document.getElementById('family_history').value
+            };
+            
+            try {
+                const response = await fetch('/predict_symptoms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayResults(result);
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error analyzing symptoms: ' + error.message);
+            } finally {
+                // Reset button state
+                document.getElementById('btnText').classList.remove('d-none');
+                document.getElementById('btnLoading').classList.add('d-none');
+            }
+        });
+        
+        function displayResults(result) {
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            const predictionClass = result.prediction === 'Malignant' ? 'danger' : 'success';
+            const riskClass = result.risk_assessment.risk_level === 'High' ? 'danger' : 
+                             result.risk_assessment.risk_level === 'Moderate' ? 'warning' : 'info';
+            
+            let riskFactorsHTML = '';
+            if (result.risk_assessment.risk_factors.length > 0) {
+                riskFactorsHTML = '<ul class="mb-0">';
+                result.risk_assessment.risk_factors.forEach(factor => {
+                    riskFactorsHTML += `<li>${factor}</li>`;
+                });
+                riskFactorsHTML += '</ul>';
+            } else {
+                riskFactorsHTML = '<p class="mb-0">No significant risk factors identified</p>';
+            }
+            
+            resultsContent.innerHTML = `
+                <div class="alert alert-${predictionClass}">
+                    <h5 class="alert-heading">Prediction: ${result.prediction}</h5>
+                    <p class="mb-0">Confidence: ${result.confidence}%</p>
+                    <small>Model: ${result.model_used}</small>
+                </div>
+                
+                <div class="alert alert-${riskClass}">
+                    <h5 class="alert-heading">Risk Assessment: ${result.risk_assessment.risk_level}</h5>
+                    <p><strong>Risk Score:</strong> ${result.risk_assessment.risk_score}/10</p>
+                    <p><strong>Risk Factors:</strong></p>
+                    ${riskFactorsHTML}
+                    <hr>
+                    <p class="mb-0"><strong>Recommendation:</strong> ${result.risk_assessment.recommendation}</p>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="/history" class="btn btn-outline-primary">View Full History</a>
+                </div>
+            `;
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // ============================================================================
+        // IMAGE UPLOAD FUNCTIONALITY
+        // ============================================================================
+
+        // Image preview
+        document.getElementById('imageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('previewImg').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Image form submission
+        document.getElementById('imageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            document.getElementById('imgBtnText').classList.add('d-none');
+            document.getElementById('imgBtnLoading').classList.remove('d-none');
+            
+            const formData = new FormData();
+            const imageFile = document.getElementById('imageFile').files[0];
+            formData.append('image', imageFile);
+            
+            try {
+                const response = await fetch('/predict_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading state
+                document.getElementById('imgBtnText').classList.remove('d-none');
+                document.getElementById('imgBtnLoading').classList.add('d-none');
+                
+                if (data.success) {
+                    displayImageResults(data);
+                } else {
+                    alert('Error: ' + (data.error || 'Analysis failed'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during analysis');
+                
+                // Hide loading state
+                document.getElementById('imgBtnText').classList.remove('d-none');
+                document.getElementById('imgBtnLoading').classList.add('d-none');
+            }
+        });
+
+        function displayImageResults(data) {
+            const resultsDiv = document.getElementById('imageResults');
+            const resultsContent = document.getElementById('imageResultsContent');
+            
+            const prediction = data.prediction_label || data.prediction;
+            const confidence = data.confidence;
+            const isMalignant = prediction === 'Malignant' || prediction === 1;
+            
+            // Create pie chart
+            const chartCanvas = document.createElement('canvas');
+            chartCanvas.id = 'resultPieChart';
+            chartCanvas.style.maxWidth = '400px';
+            chartCanvas.style.margin = '0 auto';
+            
+            resultsContent.innerHTML = `
+                <div class="alert alert-${isMalignant ? 'danger' : 'success'}">
+                    <h5 class="alert-heading">
+                        ${isMalignant ? '⚠️ Malignant' : '✅ Benign'}
+                    </h5>
+                    <p class="mb-0">Confidence: ${confidence.toFixed(2)}%</p>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6>📊 Prediction Distribution</h6>
+                        <div style="max-width: 300px; margin: 0 auto;">
+                            ${chartCanvas.outerHTML}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>📋 Analysis Details</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Model Used:</strong></td>
+                                <td>${data.model_used || 'Best Model'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Prediction:</strong></td>
+                                <td><span class="badge bg-${isMalignant ? 'danger' : 'success'}">${prediction}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Confidence:</strong></td>
+                                <td>${confidence.toFixed(2)}%</td>
+                            </tr>
+                            ${data.image_info ? `
+                            <tr>
+                                <td><strong>Image Size:</strong></td>
+                                <td>${data.image_info.original_size[0]}x${data.image_info.original_size[1]}</td>
+                            </tr>
+                            ` : ''}
+                        </table>
+                        
+                        ${data.risk_assessment ? `
+                        <div class="alert alert-info mt-3">
+                            <strong>Risk Level:</strong> ${data.risk_assessment.level}<br>
+                            <small>${data.risk_assessment.message}</small>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                ${data.all_models ? `
+                <div class="mt-4">
+                    <h6>🤖 All Model Predictions</h6>
+                    <div class="row">
+                        ${Object.entries(data.all_models).map(([model, result]) => `
+                            <div class="col-md-4 mb-2">
+                                <div class="card">
+                                    <div class="card-body p-2">
+                                        <small><strong>${model}</strong></small><br>
+                                        <small>${result.prediction_label}: ${result.confidence.toFixed(1)}%</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="mt-4 text-center">
+                    <button class="btn btn-primary" onclick="window.location.href='/history'">
+                        📜 View History
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('imageForm').reset(); document.getElementById('imagePreview').style.display='none'; document.getElementById('imageResults').style.display='none';">
+                        🔄 New Analysis
+                    </button>
+                </div>
+            `;
+            
+            // Show results
+            resultsDiv.style.display = 'block';
+            
+            // Create pie chart
+            setTimeout(() => {
+                const ctx = document.getElementById('resultPieChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: ['Benign', 'Malignant'],
+                            datasets: [{
+                                data: [
+                                    isMalignant ? (100 - confidence) : confidence,
+                                    isMalignant ? confidence : (100 - confidence)
+                                ],
+                                backgroundColor: [
+                                    'rgba(40, 167, 69, 0.8)',
+                                    'rgba(220, 53, 69, 0.8)'
+                                ],
+                                borderColor: [
+                                    'rgba(40, 167, 69, 1)',
+                                    'rgba(220, 53, 69, 1)'
+                                ],
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Prediction Confidence'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.label + ': ' + context.parsed.toFixed(2) + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
+            
+            // Scroll to results
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
+</body>
+</html>
