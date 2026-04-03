@@ -919,7 +919,7 @@ if __name__ == '__main__':
     
     # Run app
     print("=" * 50)
-    print("🚀 Breast Cancer Detection System")
+    print("Breast Cancer Detection System")
     print("=" * 50)
     print("Server running at: http://localhost:5000")
     print("Default Admin: admin / admin123")

@@ -107,12 +107,12 @@ class AuthManager:
                     VALUES (?, ?, ?, ?, ?)
                 ''', ('admin', 'admin@hospital.com', password_hash, 'System Administrator', 'admin'))
                 conn.commit()
-                print("✅ Default admin created: username='admin', password='admin123'")
+                print("[OK] Default admin created: username='admin', password='admin123'")
             elif admin_user[1] != 'admin':
                 # Update existing admin user to have admin role
                 cursor.execute("UPDATE users SET role = 'admin' WHERE username = 'admin'")
                 conn.commit()
-                print("✅ Updated existing admin user to have admin role")
+                print("[OK] Updated existing admin user to have admin role")
         finally:
             if should_close:
                 conn.close()

@@ -78,7 +78,7 @@ class AppointmentManager:
         
         conn.commit()
         conn.close()
-        print("✅ Appointments database initialized")
+        print("[OK] Appointments database initialized")
     
     # ============================================================================
     # LOCATION MANAGEMENT
