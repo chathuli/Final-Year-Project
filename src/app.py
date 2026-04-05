@@ -29,10 +29,16 @@ appointment_manager = AppointmentManager()
 
 @app.route('/login')
 def login():
-    """Login selection page"""
+    """Unified login page"""
     if 'user_id' in session:
-        return redirect(url_for('home'))
-    return render_template('login_select.html')
+        # Redirect based on role if already logged in
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        elif session.get('role') == 'doctor':
+            return redirect(url_for('doctor_dashboard'))
+        else:
+            return redirect(url_for('home'))
+    return render_template('login.html')
 
 @app.route('/login/admin')
 def login_admin():

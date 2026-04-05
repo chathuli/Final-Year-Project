@@ -326,18 +326,16 @@ class AppointmentManager:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        # Get appointments with location info
         if status:
             cursor.execute('''
                 SELECT 
                     a.*,
-                    u.full_name as doctor_name,
-                    u.email as doctor_email,
                     dl.location_name,
                     dl.address,
                     dl.city,
                     dl.phone
                 FROM appointments a
-                JOIN users u ON a.doctor_id = u.id
                 JOIN doctor_locations dl ON a.location_id = dl.id
                 WHERE a.patient_id = ? AND a.status = ?
                 ORDER BY a.appointment_date DESC, a.appointment_time DESC
@@ -346,18 +344,38 @@ class AppointmentManager:
             cursor.execute('''
                 SELECT 
                     a.*,
-                    u.full_name as doctor_name,
-                    u.email as doctor_email,
                     dl.location_name,
                     dl.address,
                     dl.city,
                     dl.phone
                 FROM appointments a
-                JOIN users u ON a.doctor_id = u.id
                 JOIN doctor_locations dl ON a.location_id = dl.id
                 WHERE a.patient_id = ?
                 ORDER BY a.appointment_date DESC, a.appointment_time DESC
             ''', (patient_id,))
+        
+        appointments = []
+        for row in cursor.fetchall():
+            appt = dict(row)
+            
+            # Get doctor info from users database
+            users_conn = sqlite3.connect('data/users.db')
+            users_cursor = users_conn.cursor()
+            users_cursor.execute('SELECT full_name, email FROM users WHERE id = ?', (appt['doctor_id'],))
+            doctor_info = users_cursor.fetchone()
+            
+            if doctor_info:
+                appt['doctor_name'] = doctor_info[0]
+                appt['doctor_email'] = doctor_info[1]
+            else:
+                appt['doctor_name'] = 'Unknown'
+                appt['doctor_email'] = ''
+            
+            users_conn.close()
+            appointments.append(appt)
+        
+        conn.close()
+        return appointments
         
         appointments = [dict(row) for row in cursor.fetchall()]
         conn.close()
@@ -477,24 +495,37 @@ class AppointmentManager:
     
     def get_all_doctors(self):
         """Get all doctors with their locations"""
-        conn = self.get_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        # Connect to users database
+        users_conn = sqlite3.connect('data/users.db')
+        users_conn.row_factory = sqlite3.Row
+        users_cursor = users_conn.cursor()
         
-        cursor.execute('''
-            SELECT 
-                u.id,
-                u.full_name,
-                u.email,
-                COUNT(DISTINCT dl.id) as location_count
-            FROM users u
-            LEFT JOIN doctor_locations dl ON u.id = dl.doctor_id AND dl.is_active = 1
-            WHERE u.role = 'doctor' AND u.is_active = 1
-            GROUP BY u.id
-            ORDER BY u.full_name
+        # Get all doctors
+        users_cursor.execute('''
+            SELECT id, full_name, email
+            FROM users
+            WHERE role = 'doctor' AND is_active = 1
+            ORDER BY full_name
         ''')
         
-        doctors = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        doctors = []
+        for row in users_cursor.fetchall():
+            doctor = dict(row)
+            
+            # Get location count from appointments database
+            appt_conn = self.get_connection()
+            appt_cursor = appt_conn.cursor()
+            appt_cursor.execute('''
+                SELECT COUNT(DISTINCT id) as location_count
+                FROM doctor_locations
+                WHERE doctor_id = ? AND is_active = 1
+            ''', (doctor['id'],))
+            
+            location_count = appt_cursor.fetchone()[0]
+            doctor['location_count'] = location_count
+            
+            appt_conn.close()
+            doctors.append(doctor)
         
+        users_conn.close()
         return doctors
