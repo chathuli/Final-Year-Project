@@ -160,6 +160,122 @@
                                 <small class="text-muted">Has anyone in your family had breast cancer?</small>
                             </div>
 
+                            <!-- NEW PROFESSIONAL SYMPTOMS -->
+                            
+                            <!-- Nipple Retraction -->
+                            <div class="mb-4">
+                                <label class="form-label">Nipple Retraction/Inversion</label>
+                                <select class="form-select" id="nipple_retraction" name="nipple_retraction" required>
+                                    <option value="none">No retraction</option>
+                                    <option value="recent">Recent retraction/inversion</option>
+                                    <option value="longstanding">Longstanding retraction</option>
+                                </select>
+                                <small class="text-muted">Has your nipple turned inward or changed position?</small>
+                            </div>
+
+                            <!-- Armpit Lump -->
+                            <div class="mb-4">
+                                <label class="form-label">Armpit Lump (Lymph Nodes)</label>
+                                <select class="form-select" id="armpit_lump" name="armpit_lump" required>
+                                    <option value="none">No armpit lump</option>
+                                    <option value="small">Small lump in armpit</option>
+                                    <option value="large">Large lump in armpit</option>
+                                </select>
+                                <small class="text-muted">Any lumps or swelling in the armpit area?</small>
+                            </div>
+
+                            <!-- Breast Shape Changes -->
+                            <div class="mb-4">
+                                <label class="form-label">Breast Shape/Size Changes</label>
+                                <select class="form-select" id="breast_shape_change" name="breast_shape_change" required>
+                                    <option value="none">No changes</option>
+                                    <option value="minor">Minor changes</option>
+                                    <option value="significant">Significant changes</option>
+                                </select>
+                                <small class="text-muted">Any changes in breast shape or size?</small>
+                            </div>
+
+                            <!-- Skin Texture -->
+                            <div class="mb-4">
+                                <label class="form-label">Skin Texture</label>
+                                <select class="form-select" id="skin_texture" name="skin_texture" required>
+                                    <option value="normal">Normal skin</option>
+                                    <option value="thickened">Thickened skin</option>
+                                    <option value="orange_peel">Orange peel texture (peau d'orange)</option>
+                                </select>
+                                <small class="text-muted">Does the breast skin look like orange peel?</small>
+                            </div>
+
+                            <!-- Symptom Duration -->
+                            <div class="mb-4">
+                                <label class="form-label">How Long Have Symptoms Been Present?</label>
+                                <select class="form-select" id="symptom_duration" name="symptom_duration" required>
+                                    <option value="days">Days</option>
+                                    <option value="weeks">Weeks</option>
+                                    <option value="months">Months</option>
+                                    <option value="years">Years</option>
+                                </select>
+                                <small class="text-muted">Duration of symptoms</small>
+                            </div>
+
+                            <!-- Lump Mobility -->
+                            <div class="mb-4">
+                                <label class="form-label">Lump Mobility (if lump present)</label>
+                                <select class="form-select" id="lump_mobility" name="lump_mobility" required>
+                                    <option value="mobile">Moves freely</option>
+                                    <option value="somewhat_fixed">Somewhat fixed</option>
+                                    <option value="fixed">Fixed/immobile</option>
+                                </select>
+                                <small class="text-muted">Can the lump move under the skin?</small>
+                            </div>
+
+                            <!-- Pain Duration -->
+                            <div class="mb-4">
+                                <label class="form-label">Pain Duration</label>
+                                <select class="form-select" id="pain_duration" name="pain_duration" required>
+                                    <option value="none">No pain</option>
+                                    <option value="days">Days</option>
+                                    <option value="weeks">Weeks</option>
+                                    <option value="months">Months or longer</option>
+                                </select>
+                                <small class="text-muted">How long has the pain been present?</small>
+                            </div>
+
+                            <!-- Menstrual Status -->
+                            <div class="mb-4">
+                                <label class="form-label">Menstrual Status</label>
+                                <select class="form-select" id="menstrual_status" name="menstrual_status" required>
+                                    <option value="premenopausal">Premenopausal (regular periods)</option>
+                                    <option value="perimenopausal">Perimenopausal (irregular periods)</option>
+                                    <option value="postmenopausal">Postmenopausal (no periods)</option>
+                                </select>
+                                <small class="text-muted">Current menstrual status</small>
+                            </div>
+
+                            <!-- Previous Breast Conditions -->
+                            <div class="mb-4">
+                                <label class="form-label">Previous Breast Conditions</label>
+                                <select class="form-select" id="previous_conditions" name="previous_conditions" required>
+                                    <option value="none">None</option>
+                                    <option value="benign_lumps">Benign lumps/cysts</option>
+                                    <option value="biopsy">Previous biopsy</option>
+                                    <option value="surgery">Previous breast surgery</option>
+                                </select>
+                                <small class="text-muted">Any previous breast conditions or procedures?</small>
+                            </div>
+
+                            <!-- Pregnancy/Breastfeeding History -->
+                            <div class="mb-4">
+                                <label class="form-label">Pregnancy/Breastfeeding History</label>
+                                <select class="form-select" id="pregnancy_history" name="pregnancy_history" required>
+                                    <option value="parous">Have had children</option>
+                                    <option value="nulliparous">Never been pregnant</option>
+                                    <option value="currently_pregnant">Currently pregnant</option>
+                                    <option value="breastfeeding">Currently breastfeeding</option>
+                                </select>
+                                <small class="text-muted">Pregnancy and breastfeeding history</small>
+                            </div>
+
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-primary btn-lg">
                                     <span id="btnText">🔍 Analyze Symptoms</span>
@@ -294,7 +410,18 @@
                 pain: document.getElementById('pain').value,
                 skin_change: document.getElementById('skin_change').value,
                 nipple_discharge: document.getElementById('nipple_discharge').value,
-                family_history: document.getElementById('family_history').value
+                family_history: document.getElementById('family_history').value,
+                // New professional symptoms
+                nipple_retraction: document.getElementById('nipple_retraction').value,
+                armpit_lump: document.getElementById('armpit_lump').value,
+                breast_shape_change: document.getElementById('breast_shape_change').value,
+                skin_texture: document.getElementById('skin_texture').value,
+                symptom_duration: document.getElementById('symptom_duration').value,
+                lump_mobility: document.getElementById('lump_mobility').value,
+                pain_duration: document.getElementById('pain_duration').value,
+                menstrual_status: document.getElementById('menstrual_status').value,
+                previous_conditions: document.getElementById('previous_conditions').value,
+                pregnancy_history: document.getElementById('pregnancy_history').value
             };
             
             try {

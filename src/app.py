@@ -15,6 +15,7 @@ from appointments import AppointmentManager
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'your-secret-key-change-this-in-production'  # Change this!
+app.config['TEMPLATES_AUTO_RELOAD'] = True  # Auto-reload templates in development
 
 # Initialize components
 predictor = EnhancedPredictor()
