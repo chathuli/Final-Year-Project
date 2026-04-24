@@ -78,9 +78,22 @@ def logout():
 @app.route('/profile')
 @login_required
 def profile():
-    """User profile and API tokens page"""
+    """User profile page"""
     user = auth_manager.get_user_by_id(session['user_id'])
-    return render_template('profile.html', user=user)
+    
+    # Get user statistics
+    predictions = db.get_all_predictions(limit=1000)  # Get all predictions
+    # Filter predictions for current user if needed (predictions don't have user_id in current schema)
+    
+    appointments = appointment_manager.get_patient_appointments(session['user_id'])
+    
+    stats = {
+        'total_predictions': len(predictions) if predictions else 0,
+        'appointments': len(appointments) if appointments else 0,
+        'reports': len(predictions) if predictions else 0  # Assuming each prediction can have a report
+    }
+    
+    return render_template('profile.html', user=user, stats=stats)
 
 @app.route('/api/auth/register', methods=['POST'])
 def api_register():
@@ -596,6 +609,24 @@ def admin_toggle_user(user_id):
     """Toggle user active status"""
     try:
         result = auth_manager.toggle_user_status(user_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/users/<int:user_id>/edit', methods=['POST'])
+@admin_required
+def admin_edit_user(user_id):
+    """Edit user information"""
+    try:
+        data = request.get_json()
+        result = auth_manager.update_user(
+            user_id=user_id,
+            username=data.get('username'),
+            email=data.get('email'),
+            full_name=data.get('full_name'),
+            role=data.get('role'),
+            password=data.get('password') if data.get('password') else None
+        )
         return jsonify(result)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -19,9 +19,7 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: 
-        linear-gradient(135deg, rgba(14, 165, 233, 0.85) 0%, rgba(6, 182, 212, 0.85) 100%),
-        url('https://images.unsplash.com/photo-1584982751601-97dcc096659c?q=80&w=2072&auto=format&fit=crop') center/cover no-repeat fixed;
+    background: linear-gradient(135deg, #0A2A92 0%, #1E4FD9 50%, #3B6FE8 100%);
     min-height: 100vh;
     color: var(--dark);
     position: relative;
@@ -35,8 +33,8 @@ body::before {
     right: 0;
     bottom: 0;
     background: 
-        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+        radial-gradient(circle at 20% 50%, rgba(30, 79, 217, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(59, 111, 232, 0.3) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
 }
@@ -58,7 +56,7 @@ body::before {
 .navbar-brand {
     font-weight: 700;
     font-size: 1.5rem;
-    color: var(--medical-blue) !important;
+    color: #0A2A92 !important;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -157,7 +155,7 @@ body::before {
 }
 
 .card-header-custom {
-    background: linear-gradient(135deg, var(--medical-blue) 0%, var(--medical-teal) 100%);
+    background: linear-gradient(135deg, #0A2A92 0%, #1E4FD9 100%);
     color: white;
     padding: 2rem;
     border: none;
@@ -230,14 +228,14 @@ body::before {
 }
 
 .btn-analyze {
-    background: linear-gradient(135deg, var(--medical-blue) 0%, var(--medical-teal) 100%);
+    background: linear-gradient(135deg, #0A2A92 0%, #1E4FD9 100%);
     border: none;
     padding: 1rem 2rem;
     font-size: 1.1rem;
     font-weight: 600;
     border-radius: 12px;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(3, 105, 161, 0.4);
+    box-shadow: 0 4px 15px rgba(10, 42, 146, 0.4);
     color: white;
     position: relative;
     overflow: hidden;
@@ -256,7 +254,7 @@ body::before {
 
 .btn-analyze:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(3, 105, 161, 0.5);
+    box-shadow: 0 8px 25px rgba(10, 42, 146, 0.5);
 }
 
 .btn-analyze:hover::before {
@@ -429,7 +427,7 @@ body::before {
 .stat-value {
     font-size: 2.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, var(--medical-blue), var(--medical-teal));
+    background: linear-gradient(135deg, #0A2A92, #1E4FD9);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -454,7 +452,7 @@ body::before {
 }
 
 .table-header-gradient {
-    background: linear-gradient(135deg, #0369a1, #0891b2);
+    background: linear-gradient(135deg, #0A2A92, #1E4FD9);
     color: white;
 }
 
@@ -479,14 +477,14 @@ body::before {
 }
 
 .info-card {
-    background: linear-gradient(135deg, rgba(254, 243, 199, 0.95) 0%, rgba(253, 230, 138, 0.95) 100%);
-    border: 2px solid var(--warning);
+    background: linear-gradient(135deg, rgba(59, 111, 232, 0.15) 0%, rgba(30, 79, 217, 0.15) 100%);
+    border: 2px solid #3B6FE8;
     border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 2rem;
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 4px 15px rgba(10, 42, 146, 0.2);
 }
 
 .info-card-icon {
@@ -880,7 +878,7 @@ body::before {
 }
 
 .page-link {
-    color: var(--medical-blue);
+    color: #0A2A92;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
     padding: 0.5rem 0.75rem;
@@ -895,10 +893,10 @@ body::before {
 }
 
 .page-item.active .page-link {
-    background: linear-gradient(135deg, var(--medical-blue) 0%, var(--medical-teal) 100%);
-    border-color: var(--medical-blue);
+    background: linear-gradient(135deg, #0A2A92 0%, #1E4FD9 100%);
+    border-color: #0A2A92;
     color: white;
-    box-shadow: 0 4px 15px rgba(3, 105, 161, 0.3);
+    box-shadow: 0 4px 15px rgba(10, 42, 146, 0.3);
 }
 
 .page-item.disabled .page-link {
@@ -940,12 +938,12 @@ body::before {
 }
 
 .nav-pills .nav-link:hover {
-    background-color: rgba(102, 126, 234, 0.1);
-    color: #667eea;
+    background-color: rgba(10, 42, 146, 0.1);
+    color: #0A2A92;
 }
 
 .nav-pills .nav-link.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0A2A92 0%, #1E4FD9 100%);
     color: white;
 }
 

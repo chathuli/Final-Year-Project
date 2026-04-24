@@ -102,9 +102,15 @@ class SymptomMapper:
         duration_weight = self.symptom_weights['symptom_duration'].get(symptom_duration, 0.3)
         
         lump_mobility = symptoms.get('lump_mobility', 'mobile')
+        # If no lump detected, lump mobility should be irrelevant (use lowest risk value)
+        if lump == 'none':
+            lump_mobility = 'mobile'
         mobility_weight = self.symptom_weights['lump_mobility'].get(lump_mobility, 0.3)
         
         pain_duration = symptoms.get('pain_duration', 'none')
+        # If no pain, pain duration should be 'none'
+        if pain == 'none':
+            pain_duration = 'none'
         pain_duration_weight = self.symptom_weights['pain_duration'].get(pain_duration, 0.1)
         
         menstrual_status = symptoms.get('menstrual_status', 'premenopausal')
@@ -116,72 +122,132 @@ class SymptomMapper:
         pregnancy_history = symptoms.get('pregnancy_history', 'parous')
         pregnancy_weight = self.symptom_weights['pregnancy_history'].get(pregnancy_history, 0.3)
         
-        # Map to Wisconsin features (mean values: 0-9)
-        # Radius features (0-2) - Enhanced with mobility and armpit involvement
-        features[0] = 10 + (lump_weight * 10) + (age_factor * 5) + (mobility_weight * 3) + (armpit_weight * 2)  # radius_mean
-        features[1] = 0.2 + (lump_weight * 0.5) + (mobility_weight * 0.2)  # radius_se
-        features[2] = 12 + (lump_weight * 15) + (mobility_weight * 5) + (armpit_weight * 3)  # radius_worst
+        # Calculate overall symptom severity to determine if truly asymptomatic
+        overall_severity = (lump_weight + pain_weight + skin_weight + nipple_weight + 
+                          nipple_retraction_weight + armpit_weight + shape_weight + 
+                          texture_weight + mobility_weight) / 9
         
-        # Texture features (3-5) - Enhanced with skin texture and shape changes
-        features[3] = 15 + (skin_weight * 10) + (lump_weight * 5) + (texture_weight * 8) + (shape_weight * 4)  # texture_mean
-        features[4] = 0.8 + (skin_weight * 0.5) + (texture_weight * 0.4)  # texture_se
-        features[5] = 18 + (skin_weight * 12) + (texture_weight * 10) + (shape_weight * 5)  # texture_worst
+        # If truly asymptomatic (all weights near baseline 0.1), use healthy baseline values
+        if overall_severity < 0.15:  # All symptoms are "none"
+            # Use typical benign/healthy tissue values
+            features[0] = 11.0  # radius_mean - small, healthy
+            features[1] = 0.3   # radius_se
+            features[2] = 12.0  # radius_worst
+        else:
+            # Map to Wisconsin features (mean values: 0-9)
+            # Radius features (0-2) - Enhanced with mobility and armpit involvement
+            features[0] = 10 + (lump_weight * 10) + (age_factor * 5) + (mobility_weight * 3) + (armpit_weight * 2)  # radius_mean
+            features[1] = 0.2 + (lump_weight * 0.5) + (mobility_weight * 0.2)  # radius_se
+            features[2] = 12 + (lump_weight * 15) + (mobility_weight * 5) + (armpit_weight * 3)  # radius_worst
         
-        # Perimeter features (6-8) - Enhanced with duration and shape
-        features[6] = 70 + (lump_weight * 50) + (age_factor * 20) + (duration_weight * 15) + (shape_weight * 10)  # perimeter_mean
-        features[7] = 1.5 + (lump_weight * 2) + (duration_weight * 0.8)  # perimeter_se
-        features[8] = 80 + (lump_weight * 70) + (duration_weight * 20) + (shape_weight * 15)  # perimeter_worst
+        if overall_severity < 0.15:  # All symptoms are "none" - use healthy baseline
+            # Texture features - healthy tissue
+            features[3] = 16.0  # texture_mean
+            features[4] = 0.9   # texture_se
+            features[5] = 18.0  # texture_worst
+            
+            # Perimeter features - healthy
+            features[6] = 72.0  # perimeter_mean
+            features[7] = 1.8   # perimeter_se
+            features[8] = 80.0  # perimeter_worst
+            
+            # Area features - healthy
+            features[9] = 420.0  # area_mean
+            features[10] = 25.0  # area_se
+            features[11] = 500.0 # area_worst
+            
+            # Smoothness features - healthy
+            features[12] = 0.09  # smoothness_mean
+            features[13] = 0.006 # smoothness_se
+            features[14] = 0.11  # smoothness_worst
+            
+            # Compactness features - healthy
+            features[15] = 0.06  # compactness_mean
+            features[16] = 0.015 # compactness_se
+            features[17] = 0.10  # compactness_worst
+            
+            # Concavity features - healthy
+            features[18] = 0.04  # concavity_mean
+            features[19] = 0.012 # concavity_se
+            features[20] = 0.07  # concavity_worst
+            
+            # Concave points features - healthy
+            features[21] = 0.025 # concave_points_mean
+            features[22] = 0.007 # concave_points_se
+            features[23] = 0.04  # concave_points_worst
+            
+            # Symmetry features - healthy
+            features[24] = 0.16  # symmetry_mean
+            features[25] = 0.015 # symmetry_se
+            features[26] = 0.21  # symmetry_worst
+            
+            # Fractal dimension features - healthy
+            features[27] = 0.058 # fractal_dimension_mean
+            features[28] = 0.003 # fractal_dimension_se
+            features[29] = 0.070 # fractal_dimension_worst
+        else:
+            # Texture features (3-5) - Enhanced with skin texture and shape changes
+            features[3] = 15 + (skin_weight * 10) + (lump_weight * 5) + (texture_weight * 8) + (shape_weight * 4)  # texture_mean
+            features[4] = 0.8 + (skin_weight * 0.5) + (texture_weight * 0.4)  # texture_se
+            features[5] = 18 + (skin_weight * 12) + (texture_weight * 10) + (shape_weight * 5)  # texture_worst
+            
+            # Perimeter features (6-8) - Enhanced with duration and shape
+            features[6] = 70 + (lump_weight * 50) + (age_factor * 20) + (duration_weight * 15) + (shape_weight * 10)  # perimeter_mean
+            features[7] = 1.5 + (lump_weight * 2) + (duration_weight * 0.8)  # perimeter_se
+            features[8] = 80 + (lump_weight * 70) + (duration_weight * 20) + (shape_weight * 15)  # perimeter_worst
+            
+            # Area features (9-11) - Enhanced with mobility and armpit
+            features[9] = 400 + (lump_weight * 600) + (age_factor * 200) + (mobility_weight * 150) + (armpit_weight * 100)  # area_mean
+            features[10] = 20 + (lump_weight * 40) + (mobility_weight * 15)  # area_se
+            features[11] = 500 + (lump_weight * 800) + (mobility_weight * 200) + (armpit_weight * 150)  # area_worst
+            
+            # Smoothness features (12-14) - Enhanced with skin texture
+            features[12] = 0.08 + (skin_weight * 0.05) + (lump_weight * 0.03) + (texture_weight * 0.04)  # smoothness_mean
+            features[13] = 0.005 + (skin_weight * 0.003) + (texture_weight * 0.002)  # smoothness_se
+            features[14] = 0.10 + (skin_weight * 0.06) + (texture_weight * 0.05)  # smoothness_worst
+            
+            # Compactness features (15-17) - Enhanced with mobility and texture
+            features[15] = 0.05 + (lump_weight * 0.15) + (skin_weight * 0.08) + (mobility_weight * 0.10) + (texture_weight * 0.08)  # compactness_mean
+            features[16] = 0.01 + (lump_weight * 0.02) + (mobility_weight * 0.015)  # compactness_se
+            features[17] = 0.08 + (lump_weight * 0.20) + (mobility_weight * 0.15) + (texture_weight * 0.12)  # compactness_worst
+            
+            # Concavity features (18-20) - Enhanced with nipple retraction and shape
+            features[18] = 0.03 + (lump_weight * 0.20) + (skin_weight * 0.10) + (nipple_retraction_weight * 0.15) + (shape_weight * 0.12)  # concavity_mean
+            features[19] = 0.01 + (lump_weight * 0.03) + (nipple_retraction_weight * 0.02)  # concavity_se
+            features[20] = 0.05 + (lump_weight * 0.30) + (nipple_retraction_weight * 0.20) + (shape_weight * 0.15)  # concavity_worst
+            
+            # Concave points features (21-23) - Enhanced with nipple changes
+            features[21] = 0.02 + (lump_weight * 0.08) + (nipple_weight * 0.05) + (nipple_retraction_weight * 0.06)  # concave_points_mean
+            features[22] = 0.005 + (lump_weight * 0.01) + (nipple_retraction_weight * 0.008)  # concave_points_se
+            features[23] = 0.03 + (lump_weight * 0.12) + (nipple_retraction_weight * 0.10)  # concave_points_worst
+            
+            # Symmetry features (24-26) - Enhanced with shape changes
+            features[24] = 0.15 + (skin_weight * 0.05) + (lump_weight * 0.03) + (shape_weight * 0.06) + (nipple_retraction_weight * 0.04)  # symmetry_mean
+            features[25] = 0.01 + (skin_weight * 0.01) + (shape_weight * 0.008)  # symmetry_se
+            features[26] = 0.20 + (skin_weight * 0.08) + (shape_weight * 0.10)  # symmetry_worst
+            
+            # Fractal dimension features (27-29) - Enhanced with menstrual and previous conditions
+            features[27] = 0.055 + (lump_weight * 0.015) + (age_factor * 0.01) + (menstrual_weight * 0.008) + (previous_weight * 0.006)  # fractal_dimension_mean
+            features[28] = 0.002 + (lump_weight * 0.003) + (menstrual_weight * 0.002)  # fractal_dimension_se
+            features[29] = 0.065 + (lump_weight * 0.020) + (menstrual_weight * 0.012) + (previous_weight * 0.010)  # fractal_dimension_worst
         
-        # Area features (9-11) - Enhanced with mobility and armpit
-        features[9] = 400 + (lump_weight * 600) + (age_factor * 200) + (mobility_weight * 150) + (armpit_weight * 100)  # area_mean
-        features[10] = 20 + (lump_weight * 40) + (mobility_weight * 15)  # area_se
-        features[11] = 500 + (lump_weight * 800) + (mobility_weight * 200) + (armpit_weight * 150)  # area_worst
-        
-        # Smoothness features (12-14) - Enhanced with skin texture
-        features[12] = 0.08 + (skin_weight * 0.05) + (lump_weight * 0.03) + (texture_weight * 0.04)  # smoothness_mean
-        features[13] = 0.005 + (skin_weight * 0.003) + (texture_weight * 0.002)  # smoothness_se
-        features[14] = 0.10 + (skin_weight * 0.06) + (texture_weight * 0.05)  # smoothness_worst
-        
-        # Compactness features (15-17) - Enhanced with mobility and texture
-        features[15] = 0.05 + (lump_weight * 0.15) + (skin_weight * 0.08) + (mobility_weight * 0.10) + (texture_weight * 0.08)  # compactness_mean
-        features[16] = 0.01 + (lump_weight * 0.02) + (mobility_weight * 0.015)  # compactness_se
-        features[17] = 0.08 + (lump_weight * 0.20) + (mobility_weight * 0.15) + (texture_weight * 0.12)  # compactness_worst
-        
-        # Concavity features (18-20) - Enhanced with nipple retraction and shape
-        features[18] = 0.03 + (lump_weight * 0.20) + (skin_weight * 0.10) + (nipple_retraction_weight * 0.15) + (shape_weight * 0.12)  # concavity_mean
-        features[19] = 0.01 + (lump_weight * 0.03) + (nipple_retraction_weight * 0.02)  # concavity_se
-        features[20] = 0.05 + (lump_weight * 0.30) + (nipple_retraction_weight * 0.20) + (shape_weight * 0.15)  # concavity_worst
-        
-        # Concave points features (21-23) - Enhanced with nipple changes
-        features[21] = 0.02 + (lump_weight * 0.08) + (nipple_weight * 0.05) + (nipple_retraction_weight * 0.06)  # concave_points_mean
-        features[22] = 0.005 + (lump_weight * 0.01) + (nipple_retraction_weight * 0.008)  # concave_points_se
-        features[23] = 0.03 + (lump_weight * 0.12) + (nipple_retraction_weight * 0.10)  # concave_points_worst
-        
-        # Symmetry features (24-26) - Enhanced with shape changes
-        features[24] = 0.15 + (skin_weight * 0.05) + (lump_weight * 0.03) + (shape_weight * 0.06) + (nipple_retraction_weight * 0.04)  # symmetry_mean
-        features[25] = 0.01 + (skin_weight * 0.01) + (shape_weight * 0.008)  # symmetry_se
-        features[26] = 0.20 + (skin_weight * 0.08) + (shape_weight * 0.10)  # symmetry_worst
-        
-        # Fractal dimension features (27-29) - Enhanced with menstrual and previous conditions
-        features[27] = 0.055 + (lump_weight * 0.015) + (age_factor * 0.01) + (menstrual_weight * 0.008) + (previous_weight * 0.006)  # fractal_dimension_mean
-        features[28] = 0.002 + (lump_weight * 0.003) + (menstrual_weight * 0.002)  # fractal_dimension_se
-        features[29] = 0.065 + (lump_weight * 0.020) + (menstrual_weight * 0.012) + (previous_weight * 0.010)  # fractal_dimension_worst
-        
-        # Apply pain factor (reduces confidence slightly)
-        if pain_weight > 0.3:
-            features = features * 0.95
-        
-        # Apply family history factor (increases risk)
-        if family_weight > 0.5:
-            features = features * 1.1
-        
-        # Apply pregnancy/breastfeeding factor (may reduce risk)
-        if pregnancy_weight < 0.3:
-            features = features * 1.05
-        
-        # Apply duration factor (longer duration may indicate chronic benign condition)
-        if duration_weight > 0.6:
-            features = features * 1.08
+        # Only apply modifiers if there are actual symptoms
+        if overall_severity >= 0.15:
+            # Apply pain factor (reduces confidence slightly)
+            if pain_weight > 0.3:
+                features = features * 0.95
+            
+            # Apply family history factor (increases risk)
+            if family_weight > 0.5:
+                features = features * 1.1
+            
+            # Apply pregnancy/breastfeeding factor (may reduce risk)
+            if pregnancy_weight < 0.3:
+                features = features * 1.05
+            
+            # Apply duration factor (longer duration may indicate chronic benign condition)
+            if duration_weight > 0.6:
+                features = features * 1.08
         
         return features.tolist()
     

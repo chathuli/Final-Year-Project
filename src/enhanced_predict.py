@@ -72,6 +72,11 @@ class EnhancedPredictor:
             prediction = model.predict(features_scaled)[0]
             probability = model.predict_proba(features_scaled)[0]
             
+            # Apply confidence threshold: if malignant probability is very low, classify as benign
+            # This prevents false positives when confidence is extremely low
+            if prediction == 1 and probability[1] < 0.5:
+                prediction = 0  # Override to benign if malignant confidence < 50%
+            
             all_predictions[model_name] = {
                 'prediction': int(prediction),
                 'prediction_label': 'Malignant' if prediction == 1 else 'Benign',

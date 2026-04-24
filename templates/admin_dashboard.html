@@ -13,8 +13,8 @@
 <body>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="/">🏥 AI Cancer Detection</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <a class="navbar-brand" href="/">🏥 Breast Cancer Prediction</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -97,20 +97,20 @@
                     <div class="card-body-custom">
                         <form id="registerDoctorForm">
                             <div class="mb-3">
-                                <label class="form-label">Full Name</label>
-                                <input type="text" class="form-control" id="doctorName" required>
+                                <label for="doctorName" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="doctorName" name="doctorName" placeholder="Enter full name" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Username</label>
-                                <input type="text" class="form-control" id="doctorUsername" required>
+                                <label for="doctorUsername" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="doctorUsername" name="doctorUsername" placeholder="Enter username" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" id="doctorEmail" required>
+                                <label for="doctorEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="doctorEmail" name="doctorEmail" placeholder="Enter email address" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Password</label>
-                                <input type="password" class="form-control" id="doctorPassword" required>
+                                <label for="doctorPassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="doctorPassword" name="doctorPassword" placeholder="Enter password" required>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">
                                 ➕ Register Doctor
@@ -253,6 +253,51 @@
     <div class="stethoscope-decoration"></div>
     <div class="medical-pattern"></div>
 
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editUserModalLabel">✏️ Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUserForm">
+                        <input type="hidden" id="editUserId">
+                        <div class="mb-3">
+                            <label for="editUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="editUsername" name="editUsername" placeholder="Enter username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editFullName" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="editFullName" name="editFullName" placeholder="Enter full name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="editEmail" name="editEmail" placeholder="Enter email address" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editRole" class="form-label">Role</label>
+                            <select class="form-select" id="editRole" name="editRole">
+                                <option value="user">Patient</option>
+                                <option value="doctor">Doctor</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editPassword" class="form-label">New Password (leave blank to keep current)</label>
+                            <input type="password" class="form-control" id="editPassword" name="editPassword" placeholder="Enter new password or leave blank">
+                        </div>
+                        <div id="editMessage"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUserEdit()">💾 Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Load statistics
@@ -316,24 +361,43 @@
                     '<span class="badge bg-primary">Doctor</span>' : 
                     '<span class="badge bg-secondary">Patient</span>';
                 
-                const row = `
-                    <tr>
-                        <td>${user.id}</td>
-                        <td>${user.username}</td>
-                        <td>${user.full_name || '-'}</td>
-                        <td>${user.email}</td>
-                        <td>${tableId === 'allUsersTable' ? roleBadge : (user.last_login || 'Never')}</td>
-                        <td>${statusBadge}</td>
-                        <td>
-                            ${user.role !== 'admin' ? `
-                                <button class="btn btn-sm btn-warning" onclick="toggleUserStatus(${user.id})">
-                                    ${user.is_active ? 'Deactivate' : 'Activate'}
-                                </button>
-                            ` : '-'}
-                        </td>
-                    </tr>
+                // Create row element
+                const tr = document.createElement('tr');
+                
+                // Build row HTML
+                tr.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td>${user.full_name || '-'}</td>
+                    <td>${user.email}</td>
+                    <td>${tableId === 'allUsersTable' ? roleBadge : (user.last_login || 'Never')}</td>
+                    <td>${statusBadge}</td>
+                    <td></td>
                 `;
-                tbody.innerHTML += row;
+                
+                // Add action buttons if not admin
+                if (user.role !== 'admin') {
+                    const actionsCell = tr.querySelector('td:last-child');
+                    
+                    // Create Edit button
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn btn-sm btn-primary me-1';
+                    editBtn.innerHTML = '✏️ Edit';
+                    editBtn.onclick = () => editUser(user.id, user.username, user.full_name || '', user.email, user.role);
+                    
+                    // Create Toggle button
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'btn btn-sm btn-warning';
+                    toggleBtn.innerHTML = user.is_active ? 'Deactivate' : 'Activate';
+                    toggleBtn.onclick = () => toggleUserStatus(user.id);
+                    
+                    actionsCell.appendChild(editBtn);
+                    actionsCell.appendChild(toggleBtn);
+                } else {
+                    tr.querySelector('td:last-child').innerHTML = '-';
+                }
+                
+                tbody.appendChild(tr);
             });
         }
 
@@ -389,6 +453,59 @@
                 }
             } catch (error) {
                 console.error('Error toggling user status:', error);
+            }
+        }
+
+        // Edit user function
+        function editUser(id, username, fullName, email, role) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUsername').value = username;
+            document.getElementById('editFullName').value = fullName;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('editRole').value = role;
+            document.getElementById('editPassword').value = '';
+            document.getElementById('editMessage').innerHTML = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        }
+
+        // Save user edit
+        async function saveUserEdit() {
+            const userId = document.getElementById('editUserId').value;
+            const data = {
+                username: document.getElementById('editUsername').value,
+                full_name: document.getElementById('editFullName').value,
+                email: document.getElementById('editEmail').value,
+                role: document.getElementById('editRole').value,
+                password: document.getElementById('editPassword').value
+            };
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/edit`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                const messageDiv = document.getElementById('editMessage');
+                
+                if (result.success) {
+                    messageDiv.innerHTML = '<div class="alert alert-success">User updated successfully!</div>';
+                    setTimeout(() => {
+                        bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                        loadUsers();
+                        loadUsers('doctor');
+                        loadUsers('user');
+                        loadStatistics();
+                    }, 1500);
+                } else {
+                    messageDiv.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('editMessage').innerHTML = 
+                    '<div class="alert alert-danger">Error updating user</div>';
             }
         }
 

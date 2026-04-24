@@ -13,8 +13,8 @@
 <body>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="/">🏥 AI Cancer Detection</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
+            <a class="navbar-brand" href="/">🏥 Breast Cancer Prediction</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -108,7 +108,7 @@
 
                             <!-- Lump -->
                             <div class="mb-4">
-                                <label class="form-label">Breast Lump</label>
+                                <label for="lump" class="form-label">Breast Lump</label>
                                 <select class="form-select" id="lump" name="lump" required>
                                     <option value="none">No lump detected</option>
                                     <option value="small">Small lump (< 2cm)</option>
@@ -119,7 +119,7 @@
 
                             <!-- Pain -->
                             <div class="mb-4">
-                                <label class="form-label">Breast Pain</label>
+                                <label for="pain" class="form-label">Breast Pain</label>
                                 <select class="form-select" id="pain" name="pain" required>
                                     <option value="none">No pain</option>
                                     <option value="mild">Mild discomfort</option>
@@ -130,7 +130,7 @@
 
                             <!-- Skin Changes -->
                             <div class="mb-4">
-                                <label class="form-label">Skin Changes</label>
+                                <label for="skin_change" class="form-label">Skin Changes</label>
                                 <select class="form-select" id="skin_change" name="skin_change" required>
                                     <option value="none">No changes</option>
                                     <option value="dimpling">Dimpling or puckering</option>
@@ -141,7 +141,7 @@
 
                             <!-- Nipple Discharge -->
                             <div class="mb-4">
-                                <label class="form-label">Nipple Discharge</label>
+                                <label for="nipple_discharge" class="form-label">Nipple Discharge</label>
                                 <select class="form-select" id="nipple_discharge" name="nipple_discharge" required>
                                     <option value="none">No discharge</option>
                                     <option value="clear">Clear fluid</option>
@@ -152,7 +152,7 @@
 
                             <!-- Family History -->
                             <div class="mb-4">
-                                <label class="form-label">Family History</label>
+                                <label for="family_history" class="form-label">Family History</label>
                                 <select class="form-select" id="family_history" name="family_history" required>
                                     <option value="no">No family history</option>
                                     <option value="yes">Family history of breast cancer</option>
@@ -164,7 +164,7 @@
                             
                             <!-- Nipple Retraction -->
                             <div class="mb-4">
-                                <label class="form-label">Nipple Retraction/Inversion</label>
+                                <label for="nipple_retraction" class="form-label">Nipple Retraction/Inversion</label>
                                 <select class="form-select" id="nipple_retraction" name="nipple_retraction" required>
                                     <option value="none">No retraction</option>
                                     <option value="recent">Recent retraction/inversion</option>
@@ -175,7 +175,7 @@
 
                             <!-- Armpit Lump -->
                             <div class="mb-4">
-                                <label class="form-label">Armpit Lump (Lymph Nodes)</label>
+                                <label for="armpit_lump" class="form-label">Armpit Lump (Lymph Nodes)</label>
                                 <select class="form-select" id="armpit_lump" name="armpit_lump" required>
                                     <option value="none">No armpit lump</option>
                                     <option value="small">Small lump in armpit</option>
@@ -186,7 +186,7 @@
 
                             <!-- Breast Shape Changes -->
                             <div class="mb-4">
-                                <label class="form-label">Breast Shape/Size Changes</label>
+                                <label for="breast_shape_change" class="form-label">Breast Shape/Size Changes</label>
                                 <select class="form-select" id="breast_shape_change" name="breast_shape_change" required>
                                     <option value="none">No changes</option>
                                     <option value="minor">Minor changes</option>
@@ -197,7 +197,7 @@
 
                             <!-- Skin Texture -->
                             <div class="mb-4">
-                                <label class="form-label">Skin Texture</label>
+                                <label for="skin_texture" class="form-label">Skin Texture</label>
                                 <select class="form-select" id="skin_texture" name="skin_texture" required>
                                     <option value="normal">Normal skin</option>
                                     <option value="thickened">Thickened skin</option>
@@ -208,7 +208,7 @@
 
                             <!-- Symptom Duration -->
                             <div class="mb-4">
-                                <label class="form-label">How Long Have Symptoms Been Present?</label>
+                                <label for="symptom_duration" class="form-label">How Long Have Symptoms Been Present?</label>
                                 <select class="form-select" id="symptom_duration" name="symptom_duration" required>
                                     <option value="days">Days</option>
                                     <option value="weeks">Weeks</option>
@@ -218,10 +218,10 @@
                                 <small class="text-muted">Duration of symptoms</small>
                             </div>
 
-                            <!-- Lump Mobility -->
-                            <div class="mb-4">
-                                <label class="form-label">Lump Mobility (if lump present)</label>
-                                <select class="form-select" id="lump_mobility" name="lump_mobility" required>
+                            <!-- Lump Mobility (conditional - only shown if lump detected) -->
+                            <div class="mb-4" id="lumpMobilitySection" style="display: none;">
+                                <label for="lump_mobility" class="form-label">Lump Mobility</label>
+                                <select class="form-select" id="lump_mobility" name="lump_mobility">
                                     <option value="mobile">Moves freely</option>
                                     <option value="somewhat_fixed">Somewhat fixed</option>
                                     <option value="fixed">Fixed/immobile</option>
@@ -229,11 +229,10 @@
                                 <small class="text-muted">Can the lump move under the skin?</small>
                             </div>
 
-                            <!-- Pain Duration -->
-                            <div class="mb-4">
-                                <label class="form-label">Pain Duration</label>
-                                <select class="form-select" id="pain_duration" name="pain_duration" required>
-                                    <option value="none">No pain</option>
+                            <!-- Pain Duration (conditional - only shown if pain exists) -->
+                            <div class="mb-4" id="painDurationSection" style="display: none;">
+                                <label for="pain_duration" class="form-label">Pain Duration</label>
+                                <select class="form-select" id="pain_duration" name="pain_duration">
                                     <option value="days">Days</option>
                                     <option value="weeks">Weeks</option>
                                     <option value="months">Months or longer</option>
@@ -243,7 +242,7 @@
 
                             <!-- Menstrual Status -->
                             <div class="mb-4">
-                                <label class="form-label">Menstrual Status</label>
+                                <label for="menstrual_status" class="form-label">Menstrual Status</label>
                                 <select class="form-select" id="menstrual_status" name="menstrual_status" required>
                                     <option value="premenopausal">Premenopausal (regular periods)</option>
                                     <option value="perimenopausal">Perimenopausal (irregular periods)</option>
@@ -254,7 +253,7 @@
 
                             <!-- Previous Breast Conditions -->
                             <div class="mb-4">
-                                <label class="form-label">Previous Breast Conditions</label>
+                                <label for="previous_conditions" class="form-label">Previous Breast Conditions</label>
                                 <select class="form-select" id="previous_conditions" name="previous_conditions" required>
                                     <option value="none">None</option>
                                     <option value="benign_lumps">Benign lumps/cysts</option>
@@ -266,7 +265,7 @@
 
                             <!-- Pregnancy/Breastfeeding History -->
                             <div class="mb-4">
-                                <label class="form-label">Pregnancy/Breastfeeding History</label>
+                                <label for="pregnancy_history" class="form-label">Pregnancy/Breastfeeding History</label>
                                 <select class="form-select" id="pregnancy_history" name="pregnancy_history" required>
                                     <option value="parous">Have had children</option>
                                     <option value="nulliparous">Never been pregnant</option>
@@ -396,6 +395,57 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
+        // ============================================================================
+        // CONDITIONAL FIELD DISPLAY
+        // ============================================================================
+        
+        // Show/hide lump mobility based on lump selection
+        document.getElementById('lump').addEventListener('change', function() {
+            const lumpValue = this.value;
+            const lumpMobilitySection = document.getElementById('lumpMobilitySection');
+            const lumpMobilitySelect = document.getElementById('lump_mobility');
+            
+            if (lumpValue === 'none') {
+                // Hide lump mobility if no lump detected
+                lumpMobilitySection.style.display = 'none';
+                lumpMobilitySelect.removeAttribute('required');
+                lumpMobilitySelect.value = 'mobile'; // Set default value
+            } else {
+                // Show lump mobility if lump detected
+                lumpMobilitySection.style.display = 'block';
+                lumpMobilitySelect.setAttribute('required', 'required');
+            }
+        });
+        
+        // Show/hide pain duration based on pain selection
+        document.getElementById('pain').addEventListener('change', function() {
+            const painValue = this.value;
+            const painDurationSection = document.getElementById('painDurationSection');
+            const painDurationSelect = document.getElementById('pain_duration');
+            
+            if (painValue === 'none') {
+                // Hide pain duration if no pain
+                painDurationSection.style.display = 'none';
+                painDurationSelect.removeAttribute('required');
+                painDurationSelect.value = 'days'; // Set default value
+            } else {
+                // Show pain duration if pain exists
+                painDurationSection.style.display = 'block';
+                painDurationSelect.setAttribute('required', 'required');
+            }
+        });
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Trigger change events to set initial state
+            document.getElementById('lump').dispatchEvent(new Event('change'));
+            document.getElementById('pain').dispatchEvent(new Event('change'));
+        });
+        
+        // ============================================================================
+        // SYMPTOM FORM SUBMISSION
+        // ============================================================================
+        
         document.getElementById('symptomForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -454,8 +504,17 @@
             const resultsContent = document.getElementById('resultsContent');
             
             const predictionClass = result.prediction === 'Malignant' ? 'danger' : 'success';
-            const riskClass = result.risk_assessment.risk_level === 'High' ? 'danger' : 
-                             result.risk_assessment.risk_level === 'Moderate' ? 'warning' : 'info';
+            
+            // Determine risk color based on risk score (0-10 scale)
+            const riskScore = result.risk_assessment.risk_score;
+            let riskClass;
+            if (riskScore >= 7) {
+                riskClass = 'danger';  // Red for high risk (7-10)
+            } else if (riskScore >= 4) {
+                riskClass = 'warning'; // Yellow/Orange for moderate risk (4-6)
+            } else {
+                riskClass = 'success'; // Green for low risk (0-3)
+            }
             
             let riskFactorsHTML = '';
             if (result.risk_assessment.risk_factors.length > 0) {

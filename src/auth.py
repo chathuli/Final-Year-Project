@@ -209,6 +209,65 @@ class AuthManager:
             if conn:
                 conn.close()
     
+    def update_user(self, user_id, username=None, email=None, full_name=None, role=None, password=None):
+        """Update user information"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Build update query dynamically based on provided fields
+            updates = []
+            params = []
+            
+            if username:
+                # Check if username already exists for another user
+                cursor.execute('SELECT id FROM users WHERE username = ? AND id != ?', (username, user_id))
+                if cursor.fetchone():
+                    return {'success': False, 'error': 'Username already exists'}
+                updates.append('username = ?')
+                params.append(username)
+            
+            if email:
+                # Check if email already exists for another user
+                cursor.execute('SELECT id FROM users WHERE email = ? AND id != ?', (email, user_id))
+                if cursor.fetchone():
+                    return {'success': False, 'error': 'Email already exists'}
+                updates.append('email = ?')
+                params.append(email)
+            
+            if full_name is not None:
+                updates.append('full_name = ?')
+                params.append(full_name)
+            
+            if role:
+                updates.append('role = ?')
+                params.append(role)
+            
+            if password:
+                hashed_password = self.hash_password(password)
+                updates.append('password_hash = ?')
+                params.append(hashed_password)
+            
+            if not updates:
+                return {'success': False, 'error': 'No fields to update'}
+            
+            # Add user_id to params
+            params.append(user_id)
+            
+            # Execute update
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+            cursor.execute(query, params)
+            
+            conn.commit()
+            return {'success': True, 'message': 'User updated successfully'}
+        
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+        finally:
+            if conn:
+                conn.close()
+    
     def login_user(self, username, password):
         """Authenticate user and create session"""
         conn = None
