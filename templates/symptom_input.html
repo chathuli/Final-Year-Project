@@ -13,7 +13,7 @@
 <body>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="/">🏥 Breast Cancer Prediction</a>
+            <a class="navbar-brand" href="/">Breast Cancer Prediction</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -750,6 +750,34 @@
             // Scroll to results
             resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+
+        // ============================================================================
+        // FLOATING PARTICLES
+        // ============================================================================
+        (function createParticles() {
+            const colors = [
+                'rgba(26, 115, 232, 0.35)',
+                'rgba(13, 148, 136, 0.35)',
+                'rgba(26, 115, 232, 0.2)',
+                'rgba(13, 148, 136, 0.2)',
+                'rgba(28, 43, 74, 0.15)'
+            ];
+            const count = 18;
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                const size = Math.random() * 14 + 6;
+                p.style.cssText = `
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${Math.random() * 100}vw;
+                    background: ${colors[Math.floor(Math.random() * colors.length)]};
+                    animation-duration: ${Math.random() * 14 + 10}s;
+                    animation-delay: ${Math.random() * 12}s;
+                `;
+                document.body.appendChild(p);
+            }
+        })();
     </script>
 </body>
 </html>
