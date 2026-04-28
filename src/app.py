@@ -12,6 +12,11 @@ from database import PredictionDatabase
 from report_generator import ReportGenerator
 from auth import AuthManager, login_required, api_token_required, admin_required, doctor_required
 from appointments import AppointmentManager
+from email_service import (
+    send_appointment_confirmation,
+    send_login_notification,
+    send_appointment_confirmed_by_doctor,
+)
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'your-secret-key-change-this-in-production'  # Change this!
@@ -120,7 +125,21 @@ def api_login():
         session['user_id'] = result['user']['id']
         session['username'] = result['user']['username']
         session['role'] = result['user']['role']
-        
+
+        # ── Send login notification email ────────────────────────────────────
+        try:
+            user_email = result['user'].get('email', '')
+            user_name  = result['user'].get('full_name') or result['user']['username']
+            user_role  = result['user']['role']
+            if user_email:
+                send_login_notification(
+                    user_email=user_email,
+                    user_name=user_name,
+                    role=user_role
+                )
+        except Exception as _email_err:
+            print(f"[EMAIL] Login notification failed: {_email_err}")
+
         # Redirect based on role
         if result['user']['role'] == 'admin':
             result['redirect'] = '/admin'
@@ -837,10 +856,10 @@ def api_get_available_slots():
 @app.route('/api/appointments/book', methods=['POST'])
 @login_required
 def api_book_appointment():
-    """Book an appointment"""
+    """Book an appointment and send confirmation email"""
     try:
         data = request.get_json()
-        
+
         result = appointment_manager.book_appointment(
             patient_id=session['user_id'],
             doctor_id=data.get('doctor_id'),
@@ -850,17 +869,55 @@ def api_book_appointment():
             reason=data.get('reason'),
             notes=data.get('notes')
         )
-        
+
+        # ── Send confirmation email on success ──────────────────────────────
+        if result.get('success'):
+            try:
+                # Fetch full appointment details (includes doctor/location info)
+                appt_id = result['appointment_id']
+                patient_appointments = appointment_manager.get_patient_appointments(
+                    session['user_id']
+                )
+                appt_detail = next(
+                    (a for a in patient_appointments if a['id'] == appt_id), None
+                )
+
+                # Get patient email from auth manager
+                patient = auth_manager.get_user_by_id(session['user_id'])
+                patient_email = patient.get('email', '') if patient else ''
+                patient_name  = patient.get('full_name') or session.get('username', 'Patient')
+
+                if patient_email and appt_detail:
+                    email_result = send_appointment_confirmation(
+                        patient_email=patient_email,
+                        patient_name=patient_name,
+                        appointment=appt_detail
+                    )
+                    result['email_sent'] = email_result.get('success', False)
+                else:
+                    result['email_sent'] = False
+
+            except Exception as email_err:
+                # Never let email failure break the booking response
+                print(f"[EMAIL] Failed to send confirmation: {email_err}")
+                result['email_sent'] = False
+
         return jsonify(result)
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/appointments/my')
 @login_required
 def api_get_my_appointments():
-    """Get user's appointments"""
+    """Get appointments — own bookings for patients, all doctor appointments for doctors/admins"""
     try:
-        appointments = appointment_manager.get_patient_appointments(session['user_id'])
+        role = session.get('role', 'user')
+        if role in ['doctor', 'admin']:
+            # Doctors see all appointments assigned to them
+            appointments = appointment_manager.get_doctor_appointments(session['user_id'])
+        else:
+            appointments = appointment_manager.get_patient_appointments(session['user_id'])
         return jsonify({'appointments': appointments})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -892,6 +949,59 @@ def api_get_doctor_appointments():
         return jsonify({'appointments': appointments})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/doctor/appointments/<int:appointment_id>/confirm', methods=['POST'])
+@doctor_required
+def api_doctor_confirm_appointment(appointment_id):
+    """Doctor confirms (or updates status of) an appointment and emails the patient"""
+    try:
+        data = request.get_json() or {}
+        new_status = data.get('status', 'confirmed')
+        doctor_notes = data.get('notes', '')
+
+        # Update appointment status
+        result = appointment_manager.update_appointment_status(
+            appointment_id, new_status, notes=doctor_notes if doctor_notes else None
+        )
+
+        if result.get('success') and new_status == 'confirmed':
+            try:
+                # Fetch full appointment details
+                appt_list = appointment_manager.get_doctor_appointments(session['user_id'])
+                appt_detail = next((a for a in appt_list if a['id'] == appointment_id), None)
+
+                if appt_detail:
+                    # Get patient info
+                    patient = auth_manager.get_user_by_id(appt_detail['patient_id'])
+                    patient_email = patient.get('email', '') if patient else ''
+                    patient_name  = (patient.get('full_name') or
+                                     patient.get('username', 'Patient')) if patient else 'Patient'
+
+                    # Get doctor name for the appointment dict
+                    doctor = auth_manager.get_user_by_id(session['user_id'])
+                    appt_detail['doctor_name'] = (
+                        doctor.get('full_name') or session.get('username', 'Doctor')
+                    ) if doctor else 'Doctor'
+
+                    if patient_email:
+                        email_result = send_appointment_confirmed_by_doctor(
+                            patient_email=patient_email,
+                            patient_name=patient_name,
+                            appointment=appt_detail,
+                            doctor_notes=doctor_notes
+                        )
+                        result['email_sent'] = email_result.get('success', False)
+                    else:
+                        result['email_sent'] = False
+            except Exception as email_err:
+                print(f"[EMAIL] Doctor-confirmation email failed: {email_err}")
+                result['email_sent'] = False
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/doctor/locations', methods=['GET', 'POST'])
 @doctor_required

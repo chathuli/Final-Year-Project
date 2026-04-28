@@ -387,36 +387,54 @@ class AppointmentManager:
         conn = self.get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
+
         query = '''
-            SELECT 
+            SELECT
                 a.*,
-                u.full_name as patient_name,
-                u.email as patient_email,
                 dl.location_name,
                 dl.address,
                 dl.city
             FROM appointments a
-            JOIN users u ON a.patient_id = u.id
             JOIN doctor_locations dl ON a.location_id = dl.id
             WHERE a.doctor_id = ?
         '''
         params = [doctor_id]
-        
+
         if date:
             query += ' AND a.appointment_date = ?'
             params.append(date)
-        
+
         if status:
             query += ' AND a.status = ?'
             params.append(status)
-        
+
         query += ' ORDER BY a.appointment_date, a.appointment_time'
-        
+
         cursor.execute(query, params)
-        appointments = [dict(row) for row in cursor.fetchall()]
+        appointments = []
+        for row in cursor.fetchall():
+            appt = dict(row)
+
+            # Fetch patient info from users.db
+            users_conn = sqlite3.connect('data/users.db')
+            users_cursor = users_conn.cursor()
+            users_cursor.execute(
+                'SELECT full_name, email FROM users WHERE id = ?',
+                (appt['patient_id'],)
+            )
+            patient_info = users_cursor.fetchone()
+            users_conn.close()
+
+            if patient_info:
+                appt['patient_name']  = patient_info[0]
+                appt['patient_email'] = patient_info[1]
+            else:
+                appt['patient_name']  = 'Unknown'
+                appt['patient_email'] = ''
+
+            appointments.append(appt)
+
         conn.close()
-        
         return appointments
     
     def update_appointment_status(self, appointment_id, status, notes=None):
