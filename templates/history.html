@@ -37,9 +37,11 @@
                         <a class="nav-link" href="/admin">Admin Panel</a>
                     </li>
                     {% endif %}
+                    {% if session.role != 'doctor' %}
                     <li class="nav-item">
                         <a class="nav-link" href="/appointments">Appointments</a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">Dashboard</a>
                     </li>
@@ -91,6 +93,29 @@
     <div class="stethoscope-decoration"></div>
     <div class="medical-pattern"></div>
 
+    <!-- Symptom Details Modal -->
+    <div class="modal fade" id="symptomDetailsModal" tabindex="-1" aria-labelledby="symptomDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="symptomDetailsModalLabel">
+                        <i class="fas fa-notes-medical"></i> Symptom Analysis - Complete Report
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="symptomDetailsContent">
+                    <div class="text-center py-5">
+                        <div class="loading-spinner loading-spinner-large"></div>
+                        <p class="mt-3">Loading symptom details...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let allPredictions = [];
@@ -131,6 +156,9 @@
             const endIndex = startIndex + itemsPerPage;
             const pageData = allPredictions.slice(startIndex, endIndex);
 
+            // Check if user is admin (from session)
+            const isAdmin = {{ 'true' if session.role == 'admin' else 'false' }};
+
             let html = `
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -138,10 +166,11 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Date & Time</th>
-                                <th>Prediction</th>
+                                <th>Type</th>
                                 <th>Confidence</th>
-                                <th>Model</th>
+                                <th>Risk Level</th>
                                 <th>Actions</th>
+                                <th>Delete</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -150,21 +179,69 @@
             pageData.forEach(pred => {
                 const badgeClass = pred.prediction === 'Benign' ? 'bg-success' : 'bg-danger';
                 const date = new Date(pred.timestamp).toLocaleString();
+                const predType = pred.prediction_type || 'manual';
                 
-                html += `
-                    <tr>
-                        <td><strong>#${pred.id}</strong></td>
-                        <td>${date}</td>
-                        <td><span class="badge ${badgeClass}">${pred.prediction}</span></td>
-                        <td>${(pred.confidence * 100).toFixed(1)}%</td>
-                        <td>${pred.model}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="downloadReport(${pred.id})">
-                                📄 Download Report
-                            </button>
-                        </td>
-                    </tr>
-                `;
+                // For symptom-based predictions, show data from symptoms and risk assessment
+                if (predType === 'symptom' && pred.symptoms_data && pred.risk_assessment) {
+                    const symptoms = pred.symptoms_data;
+                    const risk = pred.risk_assessment;
+                    
+                    // Get risk level badge
+                    let riskClass = 'bg-secondary';
+                    if (risk.risk_level === 'Very High') riskClass = 'bg-danger';
+                    else if (risk.risk_level === 'High') riskClass = 'bg-warning text-dark';
+                    else if (risk.risk_level === 'Moderate') riskClass = 'bg-info';
+                    else if (risk.risk_level === 'Low-Moderate') riskClass = 'bg-primary';
+                    else if (risk.risk_level === 'Low') riskClass = 'bg-success';
+                    
+                    html += `
+                        <tr id="prediction-row-${pred.id}" class="symptom-prediction-row">
+                            <td><strong>#${pred.id}</strong></td>
+                            <td>${date}</td>
+                            <td><span class="badge bg-info">🩺 Symptom Analysis</span></td>
+                            <td>${(pred.confidence * 100).toFixed(1)}%</td>
+                            <td><span class="badge ${riskClass}">${risk.risk_level}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewSymptomDetails(${pred.id})">
+                                    👁️ View Details
+                                </button>
+                                <button class="btn btn-sm btn-primary" onclick="downloadReport(${pred.id})">
+                                    📄 Report
+                                </button>
+                            </td>
+                            <td>
+                                ${isAdmin ? `
+                                <button class="btn btn-sm btn-danger" onclick="deleteReport(${pred.id})">
+                                    🗑️ Delete
+                                </button>
+                                ` : '<span class="text-muted">-</span>'}
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // Manual input predictions
+                    html += `
+                        <tr id="prediction-row-${pred.id}">
+                            <td><strong>#${pred.id}</strong></td>
+                            <td>${date}</td>
+                            <td><span class="badge bg-secondary">📊 Manual Input</span></td>
+                            <td>${(pred.confidence * 100).toFixed(1)}%</td>
+                            <td><span class="text-muted">N/A</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="downloadReport(${pred.id})">
+                                    📄 Report
+                                </button>
+                            </td>
+                            <td>
+                                ${isAdmin ? `
+                                <button class="btn btn-sm btn-danger" onclick="deleteReport(${pred.id})">
+                                    🗑️ Delete
+                                </button>
+                                ` : '<span class="text-muted">-</span>'}
+                            </td>
+                        </tr>
+                    `;
+                }
             });
 
             html += `
@@ -228,8 +305,311 @@
             try {
                 window.location.href = `/api/generate-report/${predictionId}`;
             } catch (error) {
-                alert('Error generating report: ' + error.message);
+                showToast('Error generating report: ' + error.message, 'danger');
             }
+        }
+
+        async function viewSymptomDetails(predictionId) {
+            // Find the prediction in our local data
+            const prediction = allPredictions.find(p => p.id === predictionId);
+            
+            if (!prediction || !prediction.symptoms_data) {
+                showToast('Symptom data not available', 'warning');
+                return;
+            }
+
+            const symptoms = prediction.symptoms_data;
+            const risk = prediction.risk_assessment;
+
+            // Build symptom details HTML with organized sections
+            let detailsHTML = `
+                <div class="mb-4">
+                    <h5 class="text-primary mb-3">📋 Prediction Summary</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">Prediction ID</h6>
+                                    <h4 class="mb-0">#${prediction.id}</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">Result</h6>
+                                    <h4 class="mb-0 ${prediction.prediction_label === 'Benign' ? 'text-success' : 'text-danger'}">
+                                        ${prediction.prediction_label}
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">Confidence</h6>
+                                    <h4 class="mb-0">${(prediction.confidence * 100).toFixed(1)}%</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">👤 Patient Information</h5>
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold bg-light" style="width: 50%">Age</td>
+                                    <td>${symptoms.age || 'N/A'} years</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Family History</td>
+                                    <td>${symptoms.family_history === 'yes' ? '<span class="badge bg-warning">✅ Yes</span>' : '<span class="badge bg-success">❌ No</span>'}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Menstrual Status</td>
+                                    <td>${formatSymptomValue(symptoms.menstrual_status)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Pregnancy History</td>
+                                    <td>${formatSymptomValue(symptoms.pregnancy_history)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Previous Conditions</td>
+                                    <td>${formatSymptomValue(symptoms.previous_conditions)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">🔍 Breast Examination</h5>
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold bg-light" style="width: 50%">Lump Detected</td>
+                                    <td>${formatSymptomValue(symptoms.lump)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Lump Mobility</td>
+                                    <td>${formatSymptomValue(symptoms.lump_mobility)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Armpit Lump</td>
+                                    <td>${formatSymptomValue(symptoms.armpit_lump)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Breast Shape Change</td>
+                                    <td>${formatSymptomValue(symptoms.breast_shape_change)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Symptom Duration</td>
+                                    <td>${formatSymptomValue(symptoms.symptom_duration)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">🩹 Pain & Discomfort</h5>
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold bg-light" style="width: 50%">Pain Level</td>
+                                    <td>${formatSymptomValue(symptoms.pain)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Pain Duration</td>
+                                    <td>${formatSymptomValue(symptoms.pain_duration)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="text-primary mb-3">🔬 Skin & Nipple Changes</h5>
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold bg-light" style="width: 50%">Skin Changes</td>
+                                    <td>${formatSymptomValue(symptoms.skin_change)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Skin Texture</td>
+                                    <td>${formatSymptomValue(symptoms.skin_texture)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Nipple Discharge</td>
+                                    <td>${formatSymptomValue(symptoms.nipple_discharge)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold bg-light">Nipple Retraction</td>
+                                    <td>${formatSymptomValue(symptoms.nipple_retraction)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            // Add risk assessment if available
+            if (risk) {
+                let riskClass = 'info';
+                let riskIcon = 'ℹ️';
+                if (risk.risk_level === 'Very High') {
+                    riskClass = 'danger';
+                    riskIcon = '🚨';
+                } else if (risk.risk_level === 'High') {
+                    riskClass = 'warning';
+                    riskIcon = '⚠️';
+                } else if (risk.risk_level === 'Moderate') {
+                    riskClass = 'info';
+                    riskIcon = 'ℹ️';
+                } else if (risk.risk_level === 'Low-Moderate') {
+                    riskClass = 'primary';
+                    riskIcon = '✓';
+                } else if (risk.risk_level === 'Low') {
+                    riskClass = 'success';
+                    riskIcon = '✅';
+                }
+
+                detailsHTML += `
+                    <div class="mt-4">
+                        <h5 class="text-primary mb-3">⚠️ Risk Assessment</h5>
+                        <div class="alert alert-${riskClass} border-${riskClass}">
+                            <div class="row align-items-center">
+                                <div class="col-md-2 text-center">
+                                    <div style="font-size: 3rem;">${riskIcon}</div>
+                                </div>
+                                <div class="col-md-10">
+                                    <h5 class="mb-2">Risk Level: <strong>${risk.risk_level}</strong></h5>
+                                    <p class="mb-2"><strong>Risk Score:</strong> ${risk.risk_score} points</p>
+                                    <p class="mb-0"><strong>Recommendation:</strong> ${risk.recommendation}</p>
+                                </div>
+                            </div>
+                        </div>
+                `;
+
+                if (risk.risk_factors && risk.risk_factors.length > 0) {
+                    detailsHTML += `
+                        <div class="mt-3">
+                            <h6 class="fw-bold mb-2">🔍 Identified Risk Factors:</h6>
+                            <ul class="list-group">
+                                ${risk.risk_factors.map(factor => `
+                                    <li class="list-group-item">
+                                        <i class="text-warning">⚠</i> ${factor}
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                detailsHTML += `</div>`;
+            }
+
+            // Show modal
+            document.getElementById('symptomDetailsContent').innerHTML = detailsHTML;
+            const modal = new bootstrap.Modal(document.getElementById('symptomDetailsModal'));
+            modal.show();
+        }
+
+        function formatSymptomValue(value) {
+            if (!value || value === 'none' || value === 'no') {
+                return '<span class="text-muted">None</span>';
+            }
+            // Convert underscores to spaces and capitalize
+            return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        async function deleteReport(predictionId) {
+            // Confirmation dialog
+            if (!confirm(`Are you sure you want to delete Prediction #${predictionId}?\n\nThis action cannot be undone and will permanently remove the prediction record and associated report.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/delete-prediction/${predictionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(`Prediction #${predictionId} deleted successfully`, 'success');
+                    
+                    // Remove from local array
+                    allPredictions = allPredictions.filter(p => p.id !== predictionId);
+                    
+                    // Recalculate current page if needed
+                    const totalPages = Math.ceil(allPredictions.length / itemsPerPage);
+                    if (currentPage > totalPages && totalPages > 0) {
+                        currentPage = totalPages;
+                    }
+                    
+                    // Refresh display
+                    if (allPredictions.length > 0) {
+                        displayHistory(currentPage);
+                    } else {
+                        document.getElementById('historyTable').innerHTML = `
+                            <div class="text-center py-5">
+                                <h4>No predictions yet</h4>
+                                <p class="text-muted">Make your first prediction to see it here</p>
+                                <a href="/" class="btn btn-analyze mt-3">Make Prediction</a>
+                            </div>
+                        `;
+                    }
+                } else {
+                    showToast('Error: ' + (result.error || 'Failed to delete prediction'), 'danger');
+                }
+            } catch (error) {
+                showToast('Error deleting prediction: ' + error.message, 'danger');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toastContainer';
+                toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                toastContainer.style.zIndex = '9999';
+                document.body.appendChild(toastContainer);
+            }
+
+            // Create toast element
+            const toastId = 'toast-' + Date.now();
+            const bgClass = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : 'bg-info';
+            
+            const toastHTML = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+
+            toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+            
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
+            toast.show();
+
+            // Remove toast element after it's hidden
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
         }
 
         // Load history on page load

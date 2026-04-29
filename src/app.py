@@ -16,6 +16,7 @@ from email_service import (
     send_appointment_confirmation,
     send_login_notification,
     send_appointment_confirmed_by_doctor,
+    send_appointment_cancelled_by_doctor,
 )
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
@@ -285,6 +286,11 @@ def generate_report(prediction_id):
         if not prediction_data:
             return jsonify({'error': 'Prediction not found'}), 404
         
+        # Safely get all_model_predictions
+        all_models = prediction_data.get('all_model_predictions')
+        if not isinstance(all_models, dict):
+            all_models = {}
+        
         # Format data for report generator
         formatted_data = {
             'report_id': f"BCR-{prediction_id:06d}",
@@ -294,12 +300,14 @@ def generate_report(prediction_id):
                 'prediction_label': prediction_data['prediction_label'],
                 'confidence': prediction_data['confidence']
             },
-            'all_models': prediction_data.get('all_model_predictions', {}),
+            'all_models': all_models,
             'feature_importance': [],  # Can be regenerated if needed
-            'risk_assessment': {
+            'risk_assessment': prediction_data.get('risk_assessment', {
                 'level': 'Medium',
                 'message': 'Consult with healthcare professional for detailed assessment'
-            }
+            }),
+            'symptoms_data': prediction_data.get('symptoms_data'),
+            'prediction_type': prediction_data.get('prediction_type', 'manual')
         }
         
         # Generate report with absolute path
@@ -318,7 +326,15 @@ def generate_report(prediction_id):
         
         print(f"Generating report at: {output_path}")
         
-        report_path = report_gen.generate_report(formatted_data, output_path)
+        # Determine report type based on user role and prediction type
+        if prediction_data.get('prediction_type') == 'symptom':
+            report_type = 'symptom'
+        elif session.get('role') in ['doctor', 'admin']:
+            report_type = 'technical'
+        else:
+            report_type = 'patient'
+            
+        report_path = report_gen.generate_report(formatted_data, output_path, report_type=report_type)
         
         print(f"Report generated successfully: {report_path}")
         
@@ -335,10 +351,21 @@ def generate_report(prediction_id):
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/delete-prediction/<int:prediction_id>', methods=['DELETE'])
+@admin_required
+def delete_prediction(prediction_id):
+    """Delete a prediction (Admin only)"""
+    try:
+        result = db.delete_prediction(prediction_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/about')
 def about():
     """About page"""
     return render_template('about.html')
+
 
 @app.route('/health')
 def health():
@@ -695,13 +722,16 @@ def predict_symptoms():
         # Make prediction with all models
         result = predictor.predict_all_models(features)
         
-        # Save to database
+        # Save to database with symptom data
         prediction_id = db.save_prediction(
             prediction=result['best_model']['prediction'],
             confidence=result['best_model']['confidence'],
             model_name=result['best_model']['name'],
             features=features,
-            all_predictions=result['all_models']
+            all_predictions=result['all_models'],
+            prediction_type='symptom',
+            symptoms_data=data,
+            risk_assessment=risk_assessment
         )
         
         # Format response
@@ -813,7 +843,9 @@ def predict_image():
 @app.route('/appointments')
 @login_required
 def appointments():
-    """Appointments booking page"""
+    """Appointments booking page — doctors are redirected to their dashboard"""
+    if session.get('role') == 'doctor':
+        return redirect(url_for('doctor_dashboard'))
     return render_template('appointments.html')
 
 @app.route('/api/appointments/doctors')
@@ -995,6 +1027,56 @@ def api_doctor_confirm_appointment(appointment_id):
                         result['email_sent'] = False
             except Exception as email_err:
                 print(f"[EMAIL] Doctor-confirmation email failed: {email_err}")
+                result['email_sent'] = False
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/doctor/appointments/<int:appointment_id>/cancel', methods=['POST'])
+@doctor_required
+def api_doctor_cancel_appointment(appointment_id):
+    """Doctor cancels an appointment and emails the patient"""
+    try:
+        data = request.get_json() or {}
+        cancel_reason = data.get('reason', '')
+
+        # Update appointment status to cancelled
+        result = appointment_manager.update_appointment_status(
+            appointment_id, 'cancelled', notes=cancel_reason if cancel_reason else None
+        )
+
+        if result.get('success'):
+            try:
+                # Fetch full appointment details
+                appt_list = appointment_manager.get_doctor_appointments(session['user_id'])
+                appt_detail = next((a for a in appt_list if a['id'] == appointment_id), None)
+
+                if appt_detail:
+                    patient = auth_manager.get_user_by_id(appt_detail['patient_id'])
+                    patient_email = patient.get('email', '') if patient else ''
+                    patient_name  = (patient.get('full_name') or
+                                     patient.get('username', 'Patient')) if patient else 'Patient'
+
+                    doctor = auth_manager.get_user_by_id(session['user_id'])
+                    appt_detail['doctor_name'] = (
+                        doctor.get('full_name') or session.get('username', 'Doctor')
+                    ) if doctor else 'Doctor'
+
+                    if patient_email:
+                        email_result = send_appointment_cancelled_by_doctor(
+                            patient_email=patient_email,
+                            patient_name=patient_name,
+                            appointment=appt_detail,
+                            cancel_reason=cancel_reason
+                        )
+                        result['email_sent'] = email_result.get('success', False)
+                    else:
+                        result['email_sent'] = False
+            except Exception as email_err:
+                print(f"[EMAIL] Cancellation email failed: {email_err}")
                 result['email_sent'] = False
 
         return jsonify(result)

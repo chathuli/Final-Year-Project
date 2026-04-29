@@ -39,14 +39,17 @@ class PredictionDatabase:
                 confidence REAL,
                 model_name TEXT,
                 features TEXT,
-                all_model_predictions TEXT
+                all_model_predictions TEXT,
+                prediction_type TEXT DEFAULT 'manual',
+                symptoms_data TEXT,
+                risk_assessment TEXT
             )
         ''')
         
         conn.commit()
         conn.close()
     
-    def save_prediction(self, prediction, confidence, model_name, features, all_predictions=None):
+    def save_prediction(self, prediction, confidence, model_name, features, all_predictions=None, prediction_type='manual', symptoms_data=None, risk_assessment=None):
         """Save a prediction to the database"""
         conn = None
         try:
@@ -56,12 +59,14 @@ class PredictionDatabase:
             prediction_label = 'Malignant' if prediction == 1 else 'Benign'
             features_json = json.dumps(features)
             all_predictions_json = json.dumps(all_predictions) if all_predictions else None
+            symptoms_json = json.dumps(symptoms_data) if symptoms_data else None
+            risk_json = json.dumps(risk_assessment) if risk_assessment else None
             
             cursor.execute('''
                 INSERT INTO predictions 
-                (prediction, prediction_label, confidence, model_name, features, all_model_predictions)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (prediction, prediction_label, confidence, model_name, features_json, all_predictions_json))
+                (prediction, prediction_label, confidence, model_name, features, all_model_predictions, prediction_type, symptoms_data, risk_assessment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (prediction, prediction_label, confidence, model_name, features_json, all_predictions_json, prediction_type, symptoms_json, risk_json))
             
             prediction_id = cursor.lastrowid
             conn.commit()
@@ -82,7 +87,7 @@ class PredictionDatabase:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT id, timestamp, prediction_label, confidence, model_name
+                SELECT id, timestamp, prediction_label, confidence, model_name, prediction_type, symptoms_data, risk_assessment
                 FROM predictions
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -90,13 +95,24 @@ class PredictionDatabase:
             
             predictions = []
             for row in cursor.fetchall():
-                predictions.append({
+                pred = {
                     'id': row[0],
                     'timestamp': row[1],
-                    'prediction': row[2],
+                    'prediction_label': row[2],
                     'confidence': row[3],
-                    'model': row[4]
-                })
+                    'model_name': row[4],
+                    'prediction_type': row[5] if row[5] else 'manual'
+                }
+                
+                # Add symptom data if available
+                if row[6]:
+                    pred['symptoms_data'] = json.loads(row[6])
+                
+                # Add risk assessment if available
+                if row[7]:
+                    pred['risk_assessment'] = json.loads(row[7])
+                
+                predictions.append(pred)
             
             return predictions
         except Exception as e:
@@ -168,7 +184,7 @@ class PredictionDatabase:
             
             cursor.execute('''
                 SELECT id, timestamp, prediction, prediction_label, confidence, 
-                       model_name, features, all_model_predictions
+                       model_name, features, all_model_predictions, prediction_type, symptoms_data, risk_assessment
                 FROM predictions
                 WHERE id = ?
             ''', (prediction_id,))
@@ -176,7 +192,7 @@ class PredictionDatabase:
             row = cursor.fetchone()
             
             if row:
-                return {
+                pred = {
                     'id': row[0],
                     'timestamp': row[1],
                     'prediction': row[2],
@@ -184,12 +200,48 @@ class PredictionDatabase:
                     'confidence': row[4],
                     'model_name': row[5],
                     'features': json.loads(row[6]),
-                    'all_model_predictions': json.loads(row[7]) if row[7] else None
+                    'all_model_predictions': json.loads(row[7]) if row[7] else None,
+                    'prediction_type': row[8] if row[8] else 'manual'
                 }
+                
+                # Add symptom data if available
+                if row[9]:
+                    pred['symptoms_data'] = json.loads(row[9])
+                
+                # Add risk assessment if available
+                if row[10]:
+                    pred['risk_assessment'] = json.loads(row[10])
+                
+                return pred
             return None
         except Exception as e:
             print(f"Error getting prediction by ID: {e}")
             return None
+        finally:
+            if conn:
+                conn.close()
+
+    
+    def delete_prediction(self, prediction_id):
+        """Delete a prediction by ID"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('DELETE FROM predictions WHERE id = ?', (prediction_id,))
+            conn.commit()
+            
+            return {
+                'success': True,
+                'message': f'Prediction #{prediction_id} deleted successfully'
+            }
+        except Exception as e:
+            print(f"Error deleting prediction: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
         finally:
             if conn:
                 conn.close()
