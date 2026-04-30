@@ -143,6 +143,25 @@ body::before {
     animation: fadeInRight 0.6s ease-out backwards;
 }
 
+/* User Management Tabs - Black text for visibility */
+#userTabs .nav-link {
+    color: #000000 !important;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+#userTabs .nav-link:hover {
+    color: #000000 !important;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-color: #0891b2;
+}
+
+#userTabs .nav-link.active {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, #1A73E8 0%, #0D9488 100%);
+    border-color: transparent;
+}
+
 .nav-link:nth-child(1) { animation-delay: 0.1s; }
 .nav-link:nth-child(2) { animation-delay: 0.15s; }
 .nav-link:nth-child(3) { animation-delay: 0.2s; }
@@ -1264,7 +1283,7 @@ body::before {
     border-radius: 8px;
     padding: 12px 24px;
     font-weight: 700;
-    color: #000000;
+    color: #000000 !important;
     background-color: #D0E4FF;
     border: 2px solid #1A73E8;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1273,6 +1292,20 @@ body::before {
     overflow: hidden;
     font-size: 0.95rem;
     letter-spacing: 0.3px;
+}
+
+/* Analysis Tabs - Ensure black text visibility */
+#analysisTabs .nav-link {
+    color: #000000 !important;
+    font-weight: 600;
+}
+
+#analysisTabs .nav-link:hover {
+    color: #000000 !important;
+}
+
+#analysisTabs .nav-link.active {
+    color: #ffffff !important;
 }
 
 .nav-pills .nav-link::before {

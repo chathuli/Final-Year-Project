@@ -394,7 +394,7 @@
                                 </tr>
                                 <tr>
                                     <td class="fw-bold bg-light">Lump Mobility</td>
-                                    <td>${formatSymptomValue(symptoms.lump_mobility)}</td>
+                                    <td>${symptoms.lump === 'none' ? '<span class="text-muted">None</span>' : formatSymptomValue(symptoms.lump_mobility)}</td>
                                 </tr>
                                 <tr>
                                     <td class="fw-bold bg-light">Armpit Lump</td>
@@ -424,7 +424,7 @@
                                 </tr>
                                 <tr>
                                     <td class="fw-bold bg-light">Pain Duration</td>
-                                    <td>${formatSymptomValue(symptoms.pain_duration)}</td>
+                                    <td>${symptoms.pain === 'none' ? '<span class="text-muted">None</span>' : formatSymptomValue(symptoms.pain_duration)}</td>
                                 </tr>
                             </tbody>
                         </table>

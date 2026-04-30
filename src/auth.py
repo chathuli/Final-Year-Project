@@ -4,11 +4,11 @@ Handles user registration, login, and session management
 """
 
 import sqlite3
-import hashlib
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import session, redirect, url_for, request, jsonify
+import bcrypt
 
 class AuthManager:
     def __init__(self, db_path='data/users.db'):
@@ -118,8 +118,12 @@ class AuthManager:
                 conn.close()
     
     def hash_password(self, password):
-        """Hash password using SHA-256"""
-        return hashlib.sha256(password.encode()).hexdigest()
+        """Hash password using bcrypt (secure)"""
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    def verify_password(self, password, password_hash):
+        """Verify password against bcrypt hash"""
+        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
     
     def generate_token(self):
         """Generate secure random token"""
@@ -276,16 +280,14 @@ class AuthManager:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            password_hash = self.hash_password(password)
-            
             cursor.execute('''
                 SELECT * FROM users 
-                WHERE username = ? AND password_hash = ? AND is_active = 1
-            ''', (username, password_hash))
+                WHERE username = ? AND is_active = 1
+            ''', (username,))
             
             user = cursor.fetchone()
             
-            if user:
+            if user and self.verify_password(password, user['password_hash']):
                 # Update last login
                 cursor.execute('''
                     UPDATE users SET last_login = CURRENT_TIMESTAMP

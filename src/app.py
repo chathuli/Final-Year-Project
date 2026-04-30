@@ -18,10 +18,20 @@ from email_service import (
     send_appointment_confirmed_by_doctor,
     send_appointment_cancelled_by_doctor,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'your-secret-key-change-this-in-production'  # Change this!
 app.config['TEMPLATES_AUTO_RELOAD'] = True  # Auto-reload templates in development
+
+# Initialize rate limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 # Initialize components
 predictor = EnhancedPredictor()
@@ -101,7 +111,78 @@ def profile():
     
     return render_template('profile.html', user=user, stats=stats)
 
+@app.route('/api/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """API endpoint to change user password"""
+    try:
+        data = request.get_json()
+        
+        current_password = data.get('currentPassword')
+        new_password = data.get('newPassword')
+        confirm_password = data.get('confirmPassword')
+        
+        # Validation
+        if not all([current_password, new_password, confirm_password]):
+            return jsonify({
+                'success': False,
+                'error': 'All fields are required'
+            }), 400
+        
+        if new_password != confirm_password:
+            return jsonify({
+                'success': False,
+                'error': 'New passwords do not match'
+            }), 400
+        
+        if len(new_password) < 6:
+            return jsonify({
+                'success': False,
+                'error': 'Password must be at least 6 characters long'
+            }), 400
+        
+        # Verify current password
+        user = auth_manager.get_user_by_id(session['user_id'])
+        if not user:
+            return jsonify({
+                'success': False,
+                'error': 'User not found'
+            }), 404
+        
+        # Check current password
+        if not auth_manager.verify_password(current_password, user['password_hash']):
+            return jsonify({
+                'success': False,
+                'error': 'Current password is incorrect'
+            }), 401
+        
+        # Update password (pass plain password, update_user will hash it)
+        result = auth_manager.update_user(
+            user_id=session['user_id'],
+            password=new_password
+        )
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Password changed successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to change password')
+            }), 500
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/auth/register', methods=['POST'])
+@limiter.limit("5 per hour")
 def api_register():
     """API endpoint for user registration"""
     data = request.get_json()
@@ -114,6 +195,7 @@ def api_register():
     return jsonify(result)
 
 @app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def api_login():
     """API endpoint for user login"""
     data = request.get_json()
@@ -236,7 +318,8 @@ def predict():
             confidence=result['best_model']['confidence'],
             model_name=result['best_model']['name'],
             features=features,
-            all_predictions=result['all_models']
+            all_predictions=result['all_models'],
+            user_id=session.get('user_id')
         )
         
         result['prediction_id'] = prediction_id
@@ -253,15 +336,19 @@ def history():
     return render_template('history.html')
 
 @app.route('/api/history')
+@login_required
 def get_history():
     """Get prediction history"""
     try:
-        predictions = db.get_all_predictions(limit=100)
+        # Filter by user_id for regular users, show all for admin
+        user_id = None if session.get('role') == 'admin' else session.get('user_id')
+        predictions = db.get_all_predictions(limit=100, user_id=user_id)
         return jsonify({'predictions': predictions})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/statistics')
+@login_required
 def get_statistics():
     """Get prediction statistics"""
     try:
@@ -438,7 +525,8 @@ def api_v1_predict():
             confidence=result['best_model']['confidence'],
             model_name=result['best_model']['name'],
             features=features,
-            all_predictions=result['all_models']
+            all_predictions=result['all_models'],
+            user_id=request.current_user['id']
         )
         
         # Format API response
@@ -731,7 +819,8 @@ def predict_symptoms():
             all_predictions=result['all_models'],
             prediction_type='symptom',
             symptoms_data=data,
-            risk_assessment=risk_assessment
+            risk_assessment=risk_assessment,
+            user_id=session.get('user_id')
         )
         
         # Format response
@@ -809,7 +898,8 @@ def predict_image():
             confidence=result['best_model']['confidence'],
             model_name=result['best_model']['name'],
             features=features,
-            all_predictions=result['all_models']
+            all_predictions=result['all_models'],
+            user_id=session.get('user_id')
         )
         
         # Format response

@@ -25,6 +25,12 @@ EMAIL_ENABLED  = bool(EMAIL_USER and EMAIL_PASSWORD)    # auto-disable if not co
 DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 
+def _clean_doctor_name(name: str) -> str:
+    """Strip any leading 'Dr.' / 'Dr ' prefix so templates can add their own single prefix."""
+    import re
+    return re.sub(r'^Dr\.?\s*', '', name, flags=re.IGNORECASE).strip()
+
+
 def _format_date(date_str: str) -> str:
     """Convert YYYY-MM-DD to 'Monday, 28 April 2026'"""
     try:
@@ -50,7 +56,7 @@ def _format_time(time_str: str) -> str:
 def _build_html(patient_name: str, appointment: dict) -> str:
     date_fmt  = _format_date(appointment.get('appointment_date', ''))
     time_fmt  = _format_time(appointment.get('appointment_time', ''))
-    doctor    = appointment.get('doctor_name', 'Your Doctor')
+    doctor    = _clean_doctor_name(appointment.get('doctor_name', 'Your Doctor'))
     location  = appointment.get('location_name', '')
     address   = appointment.get('address', '')
     city      = appointment.get('city', '')
@@ -409,7 +415,7 @@ def send_login_notification(user_email: str, user_name: str, role: str = 'user')
 def _build_confirmed_html(patient_name: str, appointment: dict, doctor_notes: str = '') -> str:
     date_fmt  = _format_date(appointment.get('appointment_date', ''))
     time_fmt  = _format_time(appointment.get('appointment_time', ''))
-    doctor    = appointment.get('doctor_name', 'Your Doctor')
+    doctor    = _clean_doctor_name(appointment.get('doctor_name', 'Your Doctor'))
     location  = appointment.get('location_name', '')
     address   = appointment.get('address', '')
     city      = appointment.get('city', '')
@@ -592,7 +598,7 @@ def send_appointment_confirmed_by_doctor(patient_email: str, patient_name: str,
     try:
         date_fmt = _format_date(appointment.get('appointment_date', ''))
         time_fmt = _format_time(appointment.get('appointment_time', ''))
-        doctor   = appointment.get('doctor_name', 'Your Doctor')
+        doctor   = _clean_doctor_name(appointment.get('doctor_name', 'Your Doctor'))
 
         msg = MIMEMultipart('alternative')
         msg['Subject'] = (
@@ -701,6 +707,246 @@ def send_appointment_confirmation(patient_email: str, patient_name: str,
         msg = 'SMTP authentication failed. Check EMAIL_USER / EMAIL_PASSWORD.'
         print(f"[EMAIL ERROR] {msg}")
         return {'success': False, 'error': msg}
+
+    except Exception as e:
+        print(f"[EMAIL ERROR] {e}")
+        return {'success': False, 'error': str(e)}
+
+
+# ============================================================================
+# DOCTOR APPOINTMENT CANCELLATION EMAIL
+# ============================================================================
+
+def _build_cancelled_html(patient_name: str, appointment: dict, cancel_reason: str = '') -> str:
+    date_fmt  = _format_date(appointment.get('appointment_date', ''))
+    time_fmt  = _format_time(appointment.get('appointment_time', ''))
+    doctor    = _clean_doctor_name(appointment.get('doctor_name', 'Your Doctor'))
+    location  = appointment.get('location_name', '')
+    address   = appointment.get('address', '')
+    city      = appointment.get('city', '')
+    reason    = appointment.get('reason', 'General Consultation')
+    appt_id   = appointment.get('id', 'N/A')
+
+    reason_section = ''
+    if cancel_reason:
+        reason_section = f"""
+        <tr>
+          <td style="padding:0 40px 24px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#FEF2F2;border:2px solid #EF4444;
+                          border-radius:12px;padding:16px 20px;">
+              <tr>
+                <td>
+                  <p style="color:#B91C1C;font-weight:700;margin:0 0 8px;font-size:14px;">
+                    💬 Reason for Cancellation
+                  </p>
+                  <p style="color:#B91C1C;font-size:13px;margin:0;line-height:1.7;">
+                    {cancel_reason}
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>"""
+
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Appointment Cancelled</title>
+</head>
+<body style="margin:0;padding:0;font-family:'Inter',Arial,sans-serif;
+             background:linear-gradient(135deg,#F4F6F9 0%,#E8EDF4 100%);min-height:100vh;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0"
+             style="background:#FFF5F5;border-radius:20px;
+                    box-shadow:0 8px 32px rgba(239,68,68,0.15);
+                    overflow:hidden;max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#DC2626 0%,#9F1239 100%);
+                     padding:40px 40px 30px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:12px;">❌</div>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:800;">
+              Appointment Cancelled
+            </h1>
+            <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:15px;">
+              Breast Cancer Detection &amp; Care System
+            </p>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td style="padding:32px 40px 0;">
+            <p style="color:#1C2B4A;font-size:16px;margin:0 0 8px;">
+              Dear <strong>{patient_name}</strong>,
+            </p>
+            <p style="color:#374151;font-size:15px;line-height:1.6;margin:0;">
+              We regret to inform you that your appointment with <strong>Dr. {doctor}</strong>
+              has been <strong style="color:#DC2626;">cancelled</strong>.
+              Please see the details of the cancelled appointment below.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Appointment Details Card -->
+        <tr>
+          <td style="padding:24px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:rgba(255,255,255,0.85);border-radius:14px;
+                          border:2px solid #FECACA;overflow:hidden;">
+              <tr>
+                <td colspan="2"
+                    style="background:linear-gradient(135deg,#DC2626,#9F1239);
+                           padding:14px 24px;">
+                  <span style="color:#fff;font-weight:700;font-size:15px;">
+                    📋 Cancelled Appointment Details
+                  </span>
+                </td>
+              </tr>
+              {_detail_row('🔖', 'Appointment ID', f'#{appt_id}')}
+              {_detail_row('📅', 'Date', date_fmt)}
+              {_detail_row('🕐', 'Time', time_fmt)}
+              {_detail_row('👨‍⚕️', 'Doctor', doctor)}
+              {_detail_row('🏥', 'Location', location)}
+              {_detail_row('📍', 'Address', f'{address}, {city}' if address else city)}
+              {_detail_row('💬', 'Reason', reason)}
+            </table>
+          </td>
+        </tr>
+
+        {reason_section}
+
+        <!-- Next Steps -->
+        <tr>
+          <td style="padding:0 40px 24px;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#FEF9C3;border:2px solid #D97706;
+                          border-radius:12px;padding:16px 20px;">
+              <tr>
+                <td>
+                  <p style="color:#854D0E;font-weight:700;margin:0 0 8px;font-size:14px;">
+                    📌 What to do next?
+                  </p>
+                  <ul style="color:#854D0E;font-size:13px;margin:0;padding-left:18px;
+                             line-height:1.8;">
+                    <li>You can book a new appointment at your convenience.</li>
+                    <li>Contact the clinic directly if you need urgent assistance.</li>
+                    <li>We apologise for any inconvenience caused.</li>
+                  </ul>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td style="padding:0 40px 32px;text-align:center;">
+            <a href="http://localhost:5000/appointments"
+               style="display:inline-block;background:linear-gradient(135deg,#1A73E8,#0D9488);
+                      color:#ffffff;text-decoration:none;padding:14px 36px;
+                      border-radius:50px;font-weight:700;font-size:15px;
+                      box-shadow:0 4px 16px rgba(26,115,232,0.35);">
+              Book a New Appointment
+            </a>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#1C2B4A;padding:24px 40px;text-align:center;">
+            <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 6px;">
+              This is an automated message from the Breast Cancer Detection System.
+            </p>
+            <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0;">
+              Please do not reply to this email.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def send_appointment_cancelled_by_doctor(patient_email: str, patient_name: str,
+                                          appointment: dict,
+                                          cancel_reason: str = '') -> dict:
+    """
+    Send a cancellation email to the patient when a doctor cancels their appointment.
+
+    Parameters
+    ----------
+    patient_email   : patient's email address
+    patient_name    : patient's full name
+    appointment     : appointment dict
+    cancel_reason   : optional reason for cancellation
+
+    Returns
+    -------
+    {'success': True}  or  {'success': False, 'error': '...'}
+    """
+    if not EMAIL_ENABLED:
+        print(f"[EMAIL] Cancellation email skipped (not configured) for: {patient_email}")
+        return {'success': False, 'error': 'Email service not configured'}
+
+    try:
+        date_fmt = _format_date(appointment.get('appointment_date', ''))
+        time_fmt = _format_time(appointment.get('appointment_time', ''))
+        doctor   = _clean_doctor_name(appointment.get('doctor_name', 'Your Doctor'))
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = (
+            f"❌ Appointment Cancelled — "
+            f"{date_fmt} at {time_fmt}"
+        )
+        msg['From'] = f"Breast Cancer Detection System <{EMAIL_FROM}>"
+        msg['To']   = patient_email
+
+        plain = (
+            f"Appointment Cancelled\n\n"
+            f"Dear {patient_name},\n\n"
+            f"Your appointment with Dr. {doctor} has been cancelled.\n\n"
+            f"Date    : {date_fmt}\n"
+            f"Time    : {time_fmt}\n"
+            f"Doctor  : {doctor}\n"
+            f"Location: {appointment.get('location_name', '')}\n"
+        )
+        if cancel_reason:
+            plain += f"\nReason for cancellation: {cancel_reason}\n"
+        plain += (
+            "\nYou can book a new appointment at: http://localhost:5000/appointments\n\n"
+            "We apologise for any inconvenience caused.\n\n"
+            "This is an automated message. Please do not reply."
+        )
+
+        msg.attach(MIMEText(plain, 'plain', 'utf-8'))
+        msg.attach(MIMEText(
+            _build_cancelled_html(patient_name, appointment, cancel_reason),
+            'html', 'utf-8'
+        ))
+
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_FROM, [patient_email], msg.as_string())
+
+        print(f"[EMAIL] Cancellation email sent to {patient_email}")
+        return {'success': True}
+
+    except smtplib.SMTPAuthenticationError:
+        err_msg = 'SMTP authentication failed. Check EMAIL_USER / EMAIL_PASSWORD.'
+        print(f"[EMAIL ERROR] {err_msg}")
+        return {'success': False, 'error': err_msg}
 
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")

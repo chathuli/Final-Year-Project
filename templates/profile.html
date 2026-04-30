@@ -37,9 +37,11 @@
                         <a class="nav-link" href="/admin">Admin Panel</a>
                     </li>
                     {% endif %}
+                    {% if session.role != 'doctor' %}
                     <li class="nav-item">
                         <a class="nav-link" href="/appointments">Appointments</a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">Dashboard</a>
                     </li>
@@ -228,9 +230,11 @@
                             <a href="/history" class="btn btn-outline-primary">
                                 📜 View Prediction History
                             </a>
+                            {% if session.role != 'doctor' %}
                             <a href="/appointments" class="btn btn-outline-primary">
                                 📅 Manage Appointments
                             </a>
+                            {% endif %}
                             <a href="/dashboard" class="btn btn-outline-primary">
                                 📊 View Dashboard
                             </a>
@@ -314,8 +318,9 @@
             btnLoading.classList.remove('d-none');
             
             const formData = {
-                current_password: document.getElementById('currentPassword').value,
-                new_password: newPassword
+                currentPassword: document.getElementById('currentPassword').value,
+                newPassword: newPassword,
+                confirmPassword: confirmPassword
             };
             
             try {

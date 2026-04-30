@@ -37,9 +37,11 @@
                         <a class="nav-link" href="/admin">Admin Panel</a>
                     </li>
                     {% endif %}
+                    {% if session.role != 'doctor' %}
                     <li class="nav-item">
                         <a class="nav-link" href="/appointments">Appointments</a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">Dashboard</a>
                     </li>
@@ -68,6 +70,16 @@
             </div>
             <h1 class="hero-title">Symptom Checker</h1>
             <p class="hero-subtitle">Enter your symptoms for AI-powered risk assessment</p>
+            
+            <!-- Medical Disclaimer -->
+            <div class="alert alert-warning mt-4" style="max-width: 800px; margin: 20px auto; background: rgba(255, 243, 205, 0.95); border: 2px solid #ffc107; border-radius: 12px;">
+                <h6 class="alert-heading" style="color: #856404;"><strong>⚠️ Important Medical Disclaimer</strong></h6>
+                <p class="mb-0" style="color: #856404; font-size: 0.9rem;">
+                    This system is for <strong>educational and screening purposes only</strong>. It is <strong>NOT a substitute for professional medical diagnosis</strong>. 
+                    Always consult with a qualified healthcare provider for proper medical evaluation, diagnosis, and treatment. 
+                    Do not rely solely on this tool for medical decisions.
+                </p>
+            </div>
         </div>
     </div>
 

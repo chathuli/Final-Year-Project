@@ -33,6 +33,7 @@ class PredictionDatabase:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS predictions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 prediction INTEGER,
                 prediction_label TEXT,
@@ -42,14 +43,15 @@ class PredictionDatabase:
                 all_model_predictions TEXT,
                 prediction_type TEXT DEFAULT 'manual',
                 symptoms_data TEXT,
-                risk_assessment TEXT
+                risk_assessment TEXT,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
         
         conn.commit()
         conn.close()
     
-    def save_prediction(self, prediction, confidence, model_name, features, all_predictions=None, prediction_type='manual', symptoms_data=None, risk_assessment=None):
+    def save_prediction(self, prediction, confidence, model_name, features, all_predictions=None, prediction_type='manual', symptoms_data=None, risk_assessment=None, user_id=None):
         """Save a prediction to the database"""
         conn = None
         try:
@@ -64,9 +66,9 @@ class PredictionDatabase:
             
             cursor.execute('''
                 INSERT INTO predictions 
-                (prediction, prediction_label, confidence, model_name, features, all_model_predictions, prediction_type, symptoms_data, risk_assessment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (prediction, prediction_label, confidence, model_name, features_json, all_predictions_json, prediction_type, symptoms_json, risk_json))
+                (user_id, prediction, prediction_label, confidence, model_name, features, all_model_predictions, prediction_type, symptoms_data, risk_assessment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, prediction, prediction_label, confidence, model_name, features_json, all_predictions_json, prediction_type, symptoms_json, risk_json))
             
             prediction_id = cursor.lastrowid
             conn.commit()
@@ -79,19 +81,28 @@ class PredictionDatabase:
             if conn:
                 conn.close()
     
-    def get_all_predictions(self, limit=100):
-        """Get all predictions from database"""
+    def get_all_predictions(self, limit=100, user_id=None):
+        """Get all predictions from database, optionally filtered by user_id"""
         conn = None
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute('''
-                SELECT id, timestamp, prediction_label, confidence, model_name, prediction_type, symptoms_data, risk_assessment
-                FROM predictions
-                ORDER BY timestamp DESC
-                LIMIT ?
-            ''', (limit,))
+            if user_id:
+                cursor.execute('''
+                    SELECT id, timestamp, prediction_label, confidence, model_name, prediction_type, symptoms_data, risk_assessment
+                    FROM predictions
+                    WHERE user_id = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                ''', (user_id, limit))
+            else:
+                cursor.execute('''
+                    SELECT id, timestamp, prediction_label, confidence, model_name, prediction_type, symptoms_data, risk_assessment
+                    FROM predictions
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                ''', (limit,))
             
             predictions = []
             for row in cursor.fetchall():
