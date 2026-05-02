@@ -6,6 +6,7 @@ import numpy as np
 import joblib
 import os
 from sklearn.datasets import load_breast_cancer
+from input_validator import InputValidator
 
 class EnhancedPredictor:
     def __init__(self):
@@ -14,6 +15,7 @@ class EnhancedPredictor:
         self.feature_names = load_breast_cancer().feature_names
         self.best_model_name = None
         self.shap_explainer = None
+        self.validator = InputValidator()  # Add input validator
         
     def load_models(self):
         """Load all trained models and SHAP explainer"""
@@ -43,10 +45,10 @@ class EnhancedPredictor:
             try:
                 from shap_explainer import get_shap_explainer
                 self.shap_explainer = get_shap_explainer()
-                print(f"✓ Loaded {len(self.models)} model(s) with SHAP explainer")
+                print(f"[OK] Loaded {len(self.models)} model(s) with SHAP explainer")
             except Exception as e:
-                print(f"⚠ SHAP explainer not available: {e}")
-                print(f"✓ Loaded {len(self.models)} model(s)")
+                print(f"[WARNING] SHAP explainer not available: {e}")
+                print(f"[OK] Loaded {len(self.models)} model(s)")
             
             return True
         except Exception as e:
@@ -63,6 +65,18 @@ class EnhancedPredictor:
         """Make predictions using all models"""
         if not self.models:
             self.load_models()
+        
+        # Validate input features
+        validation_result = self.validator.validate_features(features)
+        
+        if not validation_result['valid']:
+            raise ValueError(f"Invalid input features: {', '.join(validation_result['errors'])}")
+        
+        # Log warnings if any
+        if validation_result['warnings']:
+            print("[WARNING] Input validation warnings:")
+            for warning in validation_result['warnings']:
+                print(f"  - {warning}")
         
         features_scaled = self.preprocess_input(features)
         
@@ -94,7 +108,7 @@ class EnhancedPredictor:
         # Get best model (highest confidence)
         best_model = max(all_predictions.items(), key=lambda x: x[1]['confidence'])
         
-        return {
+        result = {
             'all_models': all_predictions,
             'consensus': {
                 'prediction': int(consensus),
@@ -108,6 +122,12 @@ class EnhancedPredictor:
                 'confidence': best_model[1]['confidence']
             }
         }
+        
+        # Add validation warnings to result if any
+        if validation_result['warnings']:
+            result['validation_warnings'] = validation_result['warnings']
+        
+        return result
     
     def get_feature_importance(self, features):
         """Get feature importance for the prediction using SHAP if available"""

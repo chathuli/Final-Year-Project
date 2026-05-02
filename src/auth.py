@@ -5,13 +5,18 @@ Handles user registration, login, and session management
 
 import sqlite3
 import secrets
+import os
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import session, redirect, url_for, request, jsonify
 import bcrypt
 
 class AuthManager:
-    def __init__(self, db_path='data/users.db'):
+    def __init__(self, db_path=None):
+        if db_path is None:
+            # Use absolute path relative to project root
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            db_path = os.path.join(project_root, 'data', 'users.db')
         self.db_path = db_path
         self.init_database()
     

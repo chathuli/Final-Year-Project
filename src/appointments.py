@@ -10,8 +10,12 @@ from datetime import datetime, timedelta
 class AppointmentManager:
     """Manages doctor appointments and availability"""
     
-    def __init__(self, db_path='data/appointments.db'):
+    def __init__(self, db_path=None):
         """Initialize appointment manager"""
+        if db_path is None:
+            # Use absolute path relative to project root
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            db_path = os.path.join(project_root, 'data', 'appointments.db')
         self.db_path = db_path
         self.init_database()
     

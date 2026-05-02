@@ -6,12 +6,18 @@ Enhanced with Multi-Model Comparison, History, Reports, Authentication, and REST
 from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 import numpy as np
 import os
+import sys
 from datetime import datetime
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+
 from enhanced_predict import EnhancedPredictor
 from database import PredictionDatabase
 from report_generator import ReportGenerator
 from auth import AuthManager, login_required, api_token_required, admin_required, doctor_required
 from appointments import AppointmentManager
+from audit_logger import get_audit_logger
 from email_service import (
     send_appointment_confirmation,
     send_login_notification,
@@ -39,6 +45,7 @@ db = PredictionDatabase()
 report_gen = ReportGenerator()
 auth_manager = AuthManager()
 appointment_manager = AppointmentManager()
+audit_log = get_audit_logger()  # Initialize audit logger
 
 # ============================================================================
 # AUTHENTICATION ROUTES
@@ -88,6 +95,13 @@ def register():
 @app.route('/logout')
 def logout():
     """Logout user"""
+    # Log logout before clearing session
+    if 'user_id' in session:
+        audit_log.log_logout(
+            user_id=session.get('user_id'),
+            username=session.get('username')
+        )
+    
     session.clear()
     return redirect(url_for('login'))
 
@@ -97,19 +111,41 @@ def profile():
     """User profile page"""
     user = auth_manager.get_user_by_id(session['user_id'])
     
-    # Get user statistics
-    predictions = db.get_all_predictions(limit=1000)  # Get all predictions
-    # Filter predictions for current user if needed (predictions don't have user_id in current schema)
+    # Get user statistics using COUNT query instead of loading all records
+    user_id = None if session.get('role') == 'admin' else session.get('user_id')
+    total_predictions = db.get_prediction_count(user_id=user_id)
     
     appointments = appointment_manager.get_patient_appointments(session['user_id'])
     
     stats = {
-        'total_predictions': len(predictions) if predictions else 0,
+        'total_predictions': total_predictions,
         'appointments': len(appointments) if appointments else 0,
-        'reports': len(predictions) if predictions else 0  # Assuming each prediction can have a report
+        'reports': total_predictions  # Assuming each prediction can have a report
     }
     
     return render_template('profile.html', user=user, stats=stats)
+
+@app.route('/api/user/info')
+@login_required
+def get_user_info():
+    """API endpoint to get current user info"""
+    try:
+        user = auth_manager.get_user_by_id(session['user_id'])
+        if user:
+            return jsonify({
+                'success': True,
+                'user': {
+                    'id': user['id'],
+                    'username': user['username'],
+                    'email': user['email'],
+                    'full_name': user['full_name'],
+                    'role': user['role']
+                }
+            })
+        else:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/profile/change-password', methods=['POST'])
 @login_required
@@ -163,11 +199,23 @@ def change_password():
         )
         
         if result.get('success'):
+            # Log successful password change
+            audit_log.log_password_change(
+                user_id=session['user_id'],
+                username=session.get('username'),
+                success=True
+            )
             return jsonify({
                 'success': True,
                 'message': 'Password changed successfully'
             })
         else:
+            # Log failed password change
+            audit_log.log_password_change(
+                user_id=session['user_id'],
+                username=session.get('username'),
+                success=False
+            )
             return jsonify({
                 'success': False,
                 'error': result.get('error', 'Failed to change password')
@@ -184,13 +232,17 @@ def change_password():
 @app.route('/api/auth/register', methods=['POST'])
 @limiter.limit("5 per hour")
 def api_register():
-    """API endpoint for user registration"""
+    """API endpoint for user registration - Public users always get 'user' role"""
     data = request.get_json()
+    
+    # Public registration always creates 'user' role (patients)
+    # Doctors can only be created by admins through admin panel
     result = auth_manager.register_user(
         username=data.get('username'),
         email=data.get('email'),
         password=data.get('password'),
-        full_name=data.get('full_name')
+        full_name=data.get('full_name'),
+        role='user'  # Force 'user' role for public registration
     )
     return jsonify(result)
 
@@ -199,8 +251,10 @@ def api_register():
 def api_login():
     """API endpoint for user login"""
     data = request.get_json()
+    username = data.get('username')
+    
     result = auth_manager.login_user(
-        username=data.get('username'),
+        username=username,
         password=data.get('password')
     )
     
@@ -208,6 +262,13 @@ def api_login():
         session['user_id'] = result['user']['id']
         session['username'] = result['user']['username']
         session['role'] = result['user']['role']
+        
+        # Log successful login
+        audit_log.log_login(
+            user_id=result['user']['id'],
+            username=result['user']['username'],
+            success=True
+        )
 
         # ── Send login notification email ────────────────────────────────────
         try:
@@ -230,6 +291,14 @@ def api_login():
             result['redirect'] = '/doctor'
         else:
             result['redirect'] = '/'
+    else:
+        # Log failed login
+        audit_log.log_login(
+            user_id=None,
+            username=username,
+            success=False,
+            error=result.get('error', 'Login failed')
+        )
     
     return jsonify(result)
 
@@ -283,9 +352,13 @@ def predict():
         features = data.get('features', [])
         
         if not features:
-            return jsonify({'error': 'No features provided'}), 400
+            return jsonify({
+                'success': False,
+                'error': 'No features provided',
+                'message': 'Please provide an array of 30 feature values'
+            }), 400
         
-        # Make prediction with all models
+        # Make prediction with all models (includes validation)
         result = predictor.predict_all_models(features)
         
         # Get feature importance (now uses SHAP if available)
@@ -323,11 +396,46 @@ def predict():
         )
         
         result['prediction_id'] = prediction_id
+        result['success'] = True
+        
+        # Log successful prediction
+        audit_log.log_prediction(
+            user_id=session.get('user_id'),
+            username=session.get('username'),
+            prediction_id=prediction_id,
+            result=result['best_model']['prediction_label'],
+            confidence=result['best_model']['confidence']
+        )
         
         return jsonify(result)
     
+    except ValueError as e:
+        # Validation errors
+        audit_log.log_validation_error(
+            user_id=session.get('user_id'),
+            username=session.get('username'),
+            error=str(e)
+        )
+        return jsonify({
+            'success': False,
+            'error': 'Input validation failed',
+            'message': str(e)
+        }), 400
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Other errors
+        audit_log.log_prediction_error(
+            user_id=session.get('user_id'),
+            username=session.get('username'),
+            error=str(e)
+        )
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': 'Prediction failed',
+            'message': str(e)
+        }), 500
 
 @app.route('/history')
 @login_required
@@ -444,6 +552,15 @@ def delete_prediction(prediction_id):
     """Delete a prediction (Admin only)"""
     try:
         result = db.delete_prediction(prediction_id)
+        
+        if result.get('success'):
+            # Log successful deletion
+            audit_log.log_data_deletion(
+                user_id=session.get('user_id'),
+                username=session.get('username'),
+                resource=f'prediction_{prediction_id}'
+            )
+        
         return jsonify(result)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -544,7 +661,19 @@ def api_v1_predict():
             'user': request.current_user['username']
         }
         
+        # Add validation warnings if any
+        if 'validation_warnings' in result:
+            api_response['validation_warnings'] = result['validation_warnings']
+        
         return jsonify(api_response), 200
+    
+    except ValueError as e:
+        # Validation errors
+        return jsonify({
+            'success': False,
+            'error': 'Input validation failed',
+            'message': str(e)
+        }), 400
     
     except Exception as e:
         return jsonify({
@@ -576,12 +705,13 @@ def api_v1_history():
         limit = request.args.get('limit', 100, type=int)
         offset = request.args.get('offset', 0, type=int)
         
-        predictions = db.get_all_predictions(limit=limit)
+        predictions = db.get_all_predictions(limit=limit, offset=offset)
+        total_count = db.get_prediction_count()
         
         return jsonify({
             'success': True,
             'predictions': predictions,
-            'total': len(predictions),
+            'total': total_count,
             'limit': limit,
             'offset': offset,
             'user': request.current_user['username']
@@ -733,6 +863,17 @@ def admin_register_doctor():
             role='doctor',
             created_by=session['user_id']
         )
+        
+        if result.get('success'):
+            # Log doctor registration
+            audit_log.log_admin_action(
+                user_id=session.get('user_id'),
+                username=session.get('username'),
+                action='REGISTER_DOCTOR',
+                resource=f"user_{result.get('user_id')}",
+                details=f"Registered doctor: {data.get('username')}"
+            )
+        
         return jsonify(result)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -762,6 +903,90 @@ def admin_edit_user(user_id):
             password=data.get('password') if data.get('password') else None
         )
         return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================================================
+# AUDIT LOG ROUTES (Admin Only)
+# ============================================================================
+
+@app.route('/api/admin/audit-logs', methods=['GET'])
+@admin_required
+def get_audit_logs():
+    """Get audit logs with optional filters"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        user_id = request.args.get('user_id', type=int)
+        action = request.args.get('action')
+        status = request.args.get('status')
+        
+        logs = audit_log.get_recent_logs(
+            limit=limit,
+            user_id=user_id,
+            action=action,
+            status=status
+        )
+        
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'count': len(logs)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/audit-logs/failed-logins', methods=['GET'])
+@admin_required
+def get_failed_logins():
+    """Get failed login attempts"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        logs = audit_log.get_failed_logins(hours=hours)
+        
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'count': len(logs)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/audit-logs/statistics', methods=['GET'])
+@admin_required
+def get_audit_statistics():
+    """Get audit log statistics"""
+    try:
+        days = request.args.get('days', 7, type=int)
+        stats = audit_log.get_statistics(days=days)
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/audit-logs/search', methods=['GET'])
+@admin_required
+def search_audit_logs():
+    """Search audit logs"""
+    try:
+        search_term = request.args.get('q', '')
+        limit = request.args.get('limit', 100, type=int)
+        
+        if not search_term:
+            return jsonify({
+                'success': False,
+                'error': 'Search term required'
+            }), 400
+        
+        logs = audit_log.search_logs(search_term, limit=limit)
+        
+        return jsonify({
+            'success': True,
+            'logs': logs,
+            'count': len(logs)
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1231,18 +1456,26 @@ def api_doctor_availability():
             return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Load models on startup
-    predictor.load_models()
+    # Load models on startup with health check
+    print("=" * 50)
+    print("Breast Cancer Detection System")
+    print("=" * 50)
+    print("Loading ML models...")
+    
+    try:
+        predictor.load_models()
+        print("[OK] All models loaded successfully")
+    except Exception as e:
+        print(f"[ERROR] Failed to load models: {e}")
+        print("Please ensure all model files exist in the 'models/' directory")
+        import sys
+        sys.exit(1)
     
     # Create default admin account if not exists
     auth_manager.create_default_admin()
     
     # Run app
-    print("=" * 50)
-    print("Breast Cancer Detection System")
-    print("=" * 50)
     print("Server running at: http://localhost:5000")
-    print("Default Admin: admin / admin123")
     print("Press Ctrl+C to stop")
     print("=" * 50)
     

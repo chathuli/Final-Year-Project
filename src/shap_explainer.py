@@ -58,7 +58,7 @@ class SHAPExplainer:
             # Create SHAP explainers for each model
             self._create_explainers()
             
-            print(f"✓ Loaded {len(self.models)} models with SHAP explainers")
+            print(f"[OK] Loaded {len(self.models)} models with SHAP explainers")
             return True
             
         except Exception as e:
@@ -87,11 +87,11 @@ class SHAPExplainer:
                 # Use a sample for background (100 samples for speed)
                 self.background_data = shap.sample(X_scaled, 100)
                 
-                print(f"✓ Loaded background data: {self.background_data.shape}")
+                print(f"[OK] Loaded background data: {self.background_data.shape}")
             else:
                 # Create synthetic background data if file doesn't exist
                 self.background_data = np.random.randn(100, 30)
-                print("⚠ Using synthetic background data")
+                print("[WARNING] Using synthetic background data")
                 
         except Exception as e:
             print(f"Warning: Could not load background data: {e}")
@@ -118,7 +118,7 @@ class SHAPExplainer:
                 self.background_data
             )
             
-            print(f"✓ Created {len(self.explainers)} SHAP explainers")
+            print(f"[OK] Created {len(self.explainers)} SHAP explainers")
             
         except Exception as e:
             print(f"Error creating explainers: {e}")

@@ -8,7 +8,11 @@ from datetime import datetime
 import os
 
 class PredictionDatabase:
-    def __init__(self, db_path='data/predictions.db'):
+    def __init__(self, db_path=None):
+        if db_path is None:
+            # Use absolute path relative to project root
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            db_path = os.path.join(project_root, 'data', 'predictions.db')
         self.db_path = db_path
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.init_database()
@@ -81,7 +85,7 @@ class PredictionDatabase:
             if conn:
                 conn.close()
     
-    def get_all_predictions(self, limit=100, user_id=None):
+    def get_all_predictions(self, limit=100, offset=0, user_id=None):
         """Get all predictions from database, optionally filtered by user_id"""
         conn = None
         try:
@@ -94,15 +98,15 @@ class PredictionDatabase:
                     FROM predictions
                     WHERE user_id = ?
                     ORDER BY timestamp DESC
-                    LIMIT ?
-                ''', (user_id, limit))
+                    LIMIT ? OFFSET ?
+                ''', (user_id, limit, offset))
             else:
                 cursor.execute('''
                     SELECT id, timestamp, prediction_label, confidence, model_name, prediction_type, symptoms_data, risk_assessment
                     FROM predictions
                     ORDER BY timestamp DESC
-                    LIMIT ?
-                ''', (limit,))
+                    LIMIT ? OFFSET ?
+                ''', (limit, offset))
             
             predictions = []
             for row in cursor.fetchall():
@@ -129,6 +133,27 @@ class PredictionDatabase:
         except Exception as e:
             print(f"Error getting predictions: {e}")
             return []
+        finally:
+            if conn:
+                conn.close()
+    
+    def get_prediction_count(self, user_id=None):
+        """Get total count of predictions, optionally filtered by user_id"""
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            if user_id:
+                cursor.execute('SELECT COUNT(*) FROM predictions WHERE user_id = ?', (user_id,))
+            else:
+                cursor.execute('SELECT COUNT(*) FROM predictions')
+            
+            count = cursor.fetchone()[0]
+            return count
+        except Exception as e:
+            print(f"Error getting prediction count: {e}")
+            return 0
         finally:
             if conn:
                 conn.close()

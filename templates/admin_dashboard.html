@@ -112,8 +112,8 @@
                                 <label for="doctorPassword" class="form-label">Password</label>
                                 <input type="password" class="form-control" id="doctorPassword" name="doctorPassword" placeholder="Enter password" required>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100">
-                                ➕ Register Doctor
+                            <button type="submit" class="btn btn-register-doctor w-100">
+                                <span class="btn-icon">➕</span> Register Doctor
                             </button>
                         </form>
                         <div id="registerMessage" class="mt-3"></div>
@@ -378,23 +378,30 @@
                 // Add action buttons if not admin
                 if (user.role !== 'admin') {
                     const actionsCell = tr.querySelector('td:last-child');
+                    actionsCell.className = 'action-buttons-cell';
                     
                     // Create Edit button
                     const editBtn = document.createElement('button');
-                    editBtn.className = 'btn btn-sm btn-primary me-1';
-                    editBtn.innerHTML = '✏️ Edit';
+                    editBtn.className = 'btn btn-sm btn-edit me-2';
+                    editBtn.innerHTML = '<i class="btn-icon">✏️</i> Edit';
                     editBtn.onclick = () => editUser(user.id, user.username, user.full_name || '', user.email, user.role);
                     
                     // Create Toggle button
                     const toggleBtn = document.createElement('button');
-                    toggleBtn.className = 'btn btn-sm btn-warning';
-                    toggleBtn.innerHTML = user.is_active ? 'Deactivate' : 'Activate';
+                    if (user.is_active) {
+                        toggleBtn.className = 'btn btn-sm btn-deactivate';
+                        toggleBtn.innerHTML = '<i class="btn-icon">🔒</i> Deactivate';
+                    } else {
+                        toggleBtn.className = 'btn btn-sm btn-activate';
+                        toggleBtn.innerHTML = '<i class="btn-icon">✅</i> Activate';
+                    }
                     toggleBtn.onclick = () => toggleUserStatus(user.id);
                     
                     actionsCell.appendChild(editBtn);
                     actionsCell.appendChild(toggleBtn);
                 } else {
-                    tr.querySelector('td:last-child').innerHTML = '-';
+                    const actionsCell = tr.querySelector('td:last-child');
+                    actionsCell.innerHTML = '<span class="text-muted">Admin Account</span>';
                 }
                 
                 tbody.appendChild(tr);
