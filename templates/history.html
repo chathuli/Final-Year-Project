@@ -323,38 +323,6 @@
 
             // Build symptom details HTML with organized sections
             let detailsHTML = `
-                <div class="mb-4">
-                    <h5 class="text-primary mb-3">📋 Prediction Summary</h5>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h6 class="text-muted mb-2">Prediction ID</h6>
-                                    <h4 class="mb-0">#${prediction.id}</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h6 class="text-muted mb-2">Result</h6>
-                                    <h4 class="mb-0 ${prediction.prediction_label === 'Benign' ? 'text-success' : 'text-danger'}">
-                                        ${prediction.prediction_label}
-                                    </h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h6 class="text-muted mb-2">Confidence</h6>
-                                    <h4 class="mb-0">${(prediction.confidence * 100).toFixed(1)}%</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="row">
                     <div class="col-md-6">
                         <h5 class="text-primary mb-3">👤 Patient Information</h5>

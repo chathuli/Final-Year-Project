@@ -543,12 +543,6 @@
             }
             
             resultsContent.innerHTML = `
-                <div class="alert alert-${predictionClass}">
-                    <h5 class="alert-heading">Prediction: ${result.prediction}</h5>
-                    <p class="mb-0">Confidence: ${result.confidence}%</p>
-                    <small>Model: ${result.model_used}</small>
-                </div>
-                
                 <div class="alert alert-${riskClass}">
                     <h5 class="alert-heading">Risk Assessment: ${result.risk_assessment.risk_level}</h5>
                     <p><strong>Risk Score:</strong> ${result.risk_assessment.risk_score}/10</p>
